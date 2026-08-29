@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.WEB_ORIGIN ?? 'http://localhost:3000'),
   title: 'Paid',
   description:
     'Paid makes online transactions safer when you do not know the person behind the username.',
