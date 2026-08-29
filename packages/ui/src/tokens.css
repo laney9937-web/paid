@@ -1,0 +1,28 @@
+:root {
+  --paid-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --paid-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --paid-ink: #151514;
+  --paid-muted: #686761;
+  --paid-line: #ddd9cf;
+  --paid-soft: #efede7;
+  --paid-canvas: #f6f4ef;
+  --paid-surface: #ffffff;
+  --paid-danger: #8b1e1e;
+  --paid-focus: rgba(21, 21, 20, 0.18);
+  --paid-radius: 12px;
+  --paid-control: 52px;
+  --paid-space-1: 8px;
+  --paid-space-2: 14px;
+  --paid-space-3: 24px;
+  --paid-space-4: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

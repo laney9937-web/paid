@@ -1,0 +1,9 @@
+{
+  "name": "Paid V1 Prototype",
+  "short_name": "Paid",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#f6f4ef",
+  "description": "Non-production UX prototype for a trust-first creator transaction platform."
+}

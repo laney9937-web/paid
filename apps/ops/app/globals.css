@@ -1,0 +1,32 @@
+@import '@paid/ui/tokens.css';
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: var(--paid-font);
+  color: var(--paid-ink);
+  background: #f3f1ea;
+}
+.wrap {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+h1 {
+  letter-spacing: -0.04em;
+}
+.meta {
+  color: var(--paid-muted);
+}
+nav a {
+  margin-right: 16px;
+  color: inherit;
+}
+.card {
+  border-top: 1px solid var(--paid-line);
+  padding: 16px 0;
+}
+button {
+  min-height: 44px;
+}

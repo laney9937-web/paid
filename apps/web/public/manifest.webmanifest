@@ -1,0 +1,9 @@
+{
+  "name": "Paid",
+  "short_name": "Paid",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f4ef",
+  "theme_color": "#f6f4ef",
+  "description": "Protected creator transactions"
+}

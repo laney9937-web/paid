@@ -1,0 +1,21 @@
+{
+  "name": "@paid/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json --noEmit false --outDir dist",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@paid/config": "workspace:*",
+    "@paid/contracts": "workspace:*",
+    "@paid/domain": "workspace:*",
+    "@paid/email-core": "workspace:*",
+    "@paid/email-mock": "workspace:*",
+    "pino": "10.3.1",
+    "@paid/observability": "workspace:*",
+    "@paid/test-support": "workspace:*"
+  }
+}

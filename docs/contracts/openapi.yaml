@@ -1,0 +1,41 @@
+openapi: 3.1.0
+info:
+  title: Paid internal API
+  version: "1"
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/transactions/checkout-sessions:
+    post:
+      summary: Create a one-time checkout reservation
+      parameters:
+        - in: header
+          name: idempotency-key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [shareId]
+              properties:
+                shareId: { type: string }
+      responses:
+        "200":
+          description: Envelope success
+        "409":
+          description: LINK_RESERVED, LINK_USED, or IDEMPOTENCY_CONFLICT
+  /api/provider/webhooks/{provider}:
+    post:
+      summary: Signed provider webhook
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: accepted }
+        "401": { description: invalid signature }
