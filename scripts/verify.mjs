@@ -20,9 +20,13 @@ for (const file of [resolve(process.cwd(), '.env'), resolve(process.cwd(), '.env
 
 const require = createRequire(import.meta.url);
 
-function run(name, command, args) {
+function run(name, command, args, extraEnv = {}) {
   console.log(`\n==> ${name}`);
-  const result = spawnSync(command, args, { stdio: 'inherit', env: process.env, shell: false });
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    env: { ...process.env, ...extraEnv },
+    shell: false,
+  });
   if (result.status !== 0) {
     console.error(`FAIL ${name} exit=${result.status}`);
     process.exit(result.status ?? 1);
@@ -50,9 +54,9 @@ run('load-smoke', 'pnpm', ['test:load']);
 run('native-rebuild', 'pnpm', ['rebuild']);
 rmSync(resolve(process.cwd(), 'apps/web/.next'), { recursive: true, force: true });
 rmSync(resolve(process.cwd(), 'apps/ops/.next'), { recursive: true, force: true });
-run('build:web', 'pnpm', ['--filter', '@paid/web', 'build']);
-run('build:ops', 'pnpm', ['--filter', '@paid/ops', 'build']);
-run('build:worker', 'pnpm', ['--filter', '@paid/worker', 'build']);
+run('build:web', 'pnpm', ['--filter', '@paid/web', 'build'], { NODE_ENV: 'production' });
+run('build:ops', 'pnpm', ['--filter', '@paid/ops', 'build'], { NODE_ENV: 'production' });
+run('build:worker', 'pnpm', ['--filter', '@paid/worker', 'build'], { NODE_ENV: 'production' });
 run('e2e', 'pnpm', ['test:e2e']);
 
 console.log('\nVERIFY_OK');
