@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -48,6 +48,8 @@ run('mock:scenario', 'pnpm', ['mock:scenario', '--', '--name', 'all']);
 run('sbom', 'pnpm', ['sbom']);
 run('load-smoke', 'pnpm', ['test:load']);
 run('native-rebuild', 'pnpm', ['rebuild']);
+rmSync(resolve(process.cwd(), 'apps/web/.next'), { recursive: true, force: true });
+rmSync(resolve(process.cwd(), 'apps/ops/.next'), { recursive: true, force: true });
 run('build:web', 'pnpm', ['--filter', '@paid/web', 'build']);
 run('build:ops', 'pnpm', ['--filter', '@paid/ops', 'build']);
 run('build:worker', 'pnpm', ['--filter', '@paid/worker', 'build']);
