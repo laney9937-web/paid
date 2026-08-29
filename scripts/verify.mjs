@@ -47,7 +47,7 @@ run('security', 'pnpm', ['test:security']);
 run('mock:scenario', 'pnpm', ['mock:scenario', '--', '--name', 'all']);
 run('sbom', 'pnpm', ['sbom']);
 run('load-smoke', 'pnpm', ['test:load']);
-run('esbuild', 'pnpm', ['rebuild', 'esbuild']);
+run('native-rebuild', 'pnpm', ['rebuild']);
 run('build:web', 'pnpm', ['--filter', '@paid/web', 'build']);
 run('build:ops', 'pnpm', ['--filter', '@paid/ops', 'build']);
 run('build:worker', 'pnpm', ['--filter', '@paid/worker', 'build']);
