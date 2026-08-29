@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation';
 import { formatUsd } from '@paid/contracts';
 import { CreatorNav } from '../../../nav';
-import { getStore } from '../../../../src/server/store';
+import { withStore } from '../../../../src/server/store';
 
 export default async function CreatorTxDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tx = await getStore().getTransaction(id);
+  const tx = await withStore((uow) => uow.getTransaction(id));
   if (!tx || tx.creatorId !== 'creator_maya') notFound();
   return (
     <main className="page">

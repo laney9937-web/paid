@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { formatUsd } from '@paid/contracts';
 import { CreatorNav } from '../../nav';
-import { ensureDemoLink, getStore } from '../../../src/server/store';
+import { ensureDemoLink, withStore } from '../../../src/server/store';
 
 export default async function CreatorHome() {
-  const uow = getStore();
   await ensureDemoLink();
-  const balances = await uow.projectCreatorBalances('creator_maya', uow.clock.now());
-  const txs = await uow.listTransactionsByCreator('creator_maya');
+  const { balances, txs } = await withStore(async (uow) => ({
+    balances: await uow.projectCreatorBalances('creator_maya', uow.clock.now()),
+    txs: await uow.listTransactionsByCreator('creator_maya'),
+  }));
   return (
     <main className="page">
       <div className="topbar">

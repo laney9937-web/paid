@@ -8,7 +8,7 @@ export function ContinueForm({ token }: { token: string }) {
       className="stack"
       style={{ marginTop: 24 }}
     >
-      <button className="primary" type="submit">
+      <button className="primary" type="submit" data-testid="guest-continue">
         Continue
       </button>
     </form>

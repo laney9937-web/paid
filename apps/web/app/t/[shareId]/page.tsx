@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { formatUsd } from '@paid/contracts';
 import { deliveryLabel } from '@paid/domain';
-import { getStore } from '../../../src/server/store';
+import { withStore } from '../../../src/server/store';
 import { PayForm } from './pay-form';
 
 export default async function TransactionLinkPage({
@@ -10,11 +10,14 @@ export default async function TransactionLinkPage({
   params: Promise<{ shareId: string }>;
 }) {
   const { shareId } = await params;
-  const uow = getStore();
-  const link = await uow.getLinkByShareId(shareId);
-  if (!link) notFound();
-  const creator = await uow.getCreator(link.creatorId);
-  if (!creator) notFound();
+  const data = await withStore(async (uow) => {
+    const link = await uow.getLinkByShareId(shareId);
+    if (!link) return null;
+    const creator = await uow.getCreator(link.creatorId);
+    return { link, creator };
+  });
+  if (!data?.link || !data.creator) notFound();
+  const { link, creator } = data;
   return (
     <main className="page">
       <div className="topbar">

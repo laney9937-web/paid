@@ -58,7 +58,7 @@ Each `LIVE-*` and `LIVE-BRAND-*` item is `BLOCKED_EXTERNAL` in `docs/SPEC_GAPS.m
 
 ## Known limitations
 
-- Next.js runtime uses an in-process unit-of-work for demo UX; PostgreSQL is the constrained system of record (migrations + constraint tests).
+- Web/ops mutations commit through a PostgreSQL unit of work (domain + ledger + audit + outbox in one transaction).
 - Independent pentest, PITR restore drill, and multi-browser/PWA install evidence remain operator/live gates.
 - Adult live lane, real processors, and legal policies remain BLOCKED_EXTERNAL.
 

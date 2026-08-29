@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { computeTrust } from '@paid/trust';
-import { ensureDemoLink, getStore } from '../../../src/server/store';
+import { ensureDemoLink, withStore } from '../../../src/server/store';
 
 export default async function CreatorTrustPage({
   params,
@@ -9,10 +9,14 @@ export default async function CreatorTrustPage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = await params;
-  const uow = getStore();
-  const creator = await uow.getCreatorByHandle(handle);
-  if (!creator) notFound();
   await ensureDemoLink();
+  const { creator, active } = await withStore(async (uow) => {
+    const found = await uow.getCreatorByHandle(handle);
+    if (!found) return { creator: null, active: null };
+    const links = await uow.listLinksByCreator(found.id);
+    return { creator: found, active: links.find((l) => l.state === 'ACTIVE') ?? null };
+  });
+  if (!creator) notFound();
   const trust = computeTrust({
     eligibleReviews: 24,
     ratingSum: 114,
@@ -21,8 +25,6 @@ export default async function CreatorTrustPage({
     tenureDays: 220,
     integrityFlags: 0,
   });
-  const links = await uow.listLinksByCreator(creator.id);
-  const active = links.find((l) => l.state === 'ACTIVE');
   return (
     <main className="page">
       <div className="topbar">
@@ -46,6 +48,7 @@ export default async function CreatorTrustPage({
         <Link
           className="primary"
           href={`/t/${active.shareId}`}
+          data-testid="pay-creator"
           style={{ display: 'grid', placeItems: 'center', textDecoration: 'none', marginTop: 24 }}
         >
           Pay {creator.displayName}

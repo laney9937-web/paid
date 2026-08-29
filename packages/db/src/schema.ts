@@ -329,6 +329,18 @@ export const internalDisputes = pgTable('internal_disputes', {
   version: integer('version').notNull().default(1),
 });
 
+export const checkoutSessions = pgTable('checkout_sessions', {
+  id: text('id').primaryKey(),
+  transactionId: text('transaction_id').notNull(),
+  reservationId: text('reservation_id').notNull(),
+  state: text('state').notNull(),
+  redirectUrl: text('redirect_url'),
+  providerCheckoutId: text('provider_checkout_id'),
+  createdAt: ts('created_at').notNull(),
+  updatedAt: ts('updated_at').notNull(),
+  version: integer('version').notNull().default(1),
+});
+
 export const schemaVersion = pgTable('schema_migrations', {
   version: text('version').primaryKey(),
   appliedAt: ts('applied_at').notNull(),

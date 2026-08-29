@@ -150,6 +150,9 @@ importers:
       '@paid/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@paid/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@paid/domain':
         specifier: workspace:*
         version: link:../../packages/domain

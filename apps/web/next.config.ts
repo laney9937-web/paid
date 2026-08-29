@@ -3,12 +3,14 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  serverExternalPackages: ['postgres'],
   transpilePackages: [
     '@paid/auth',
     '@paid/authorization',
     '@paid/compliance',
     '@paid/config',
     '@paid/contracts',
+    '@paid/db',
     '@paid/domain',
     '@paid/observability',
     '@paid/test-support',

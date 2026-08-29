@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { formatUsd } from '@paid/contracts';
 import { CreatorNav } from '../../nav';
-import { getStore } from '../../../src/server/store';
+import { withStore } from '../../../src/server/store';
 
 export default async function TransactionsPage() {
-  const txs = await getStore().listTransactionsByCreator('creator_maya');
+  const txs = await withStore((uow) => uow.listTransactionsByCreator('creator_maya'));
   return (
     <main className="page">
       <h1>Transactions</h1>

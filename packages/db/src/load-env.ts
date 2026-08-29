@@ -1,10 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function loadLocalEnv(): void {
-  const path = resolve(process.cwd(), '../../.env');
-  const alt = resolve(process.cwd(), '.env');
-  const file = existsSync(path) ? path : existsSync(alt) ? alt : null;
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../../.env'),
+    resolve(here, '../../../.env'),
+    resolve(here, '../../../../.env'),
+  ];
+  const file = candidates.find((p) => existsSync(p));
   if (!file) return;
   for (const line of readFileSync(file, 'utf8').split('\n')) {
     const trimmed = line.trim();

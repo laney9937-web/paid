@@ -1,6 +1,22 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+
+for (const file of [resolve(process.cwd(), '.env'), resolve(process.cwd(), '.env.example')]) {
+  if (!existsSync(file)) continue;
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq < 1) continue;
+    const key = trimmed.slice(0, eq);
+    const value = trimmed.slice(eq + 1);
+    if (!(key in process.env)) process.env[key] = value;
+  }
+  break;
+}
 
 const require = createRequire(import.meta.url);
 
@@ -34,6 +50,7 @@ run('load-smoke', 'pnpm', ['test:load']);
 run('build:web', 'pnpm', ['--filter', '@paid/web', 'build']);
 run('build:ops', 'pnpm', ['--filter', '@paid/ops', 'build']);
 run('build:worker', 'pnpm', ['--filter', '@paid/worker', 'build']);
+run('e2e', 'pnpm', ['test:e2e']);
 
 console.log('\nVERIFY_OK');
 void require;

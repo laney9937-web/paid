@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
-import { FakeClock } from '@paid/contracts';
+import { systemClock } from '@paid/contracts';
 import { createMockPaymentsAdapter } from '@paid/payments-mock';
 import { processCanonicalProviderEvent } from '@paid/domain';
-import { MemoryInbox } from '@paid/test-support';
-import { getStore } from '../../../../../src/server/store';
-
-const inbox = new MemoryInbox();
+import { withStore } from '../../../../../src/server/store';
 
 export async function POST(request: Request, ctx: { params: Promise<{ provider: string }> }) {
   const { provider } = await ctx.params;
@@ -18,8 +15,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ provider: 
   }
   const adapter = createMockPaymentsAdapter({
     scenario: 'happy-path',
-    clock: new FakeClock(),
-    currentKey: 'mock-webhook-key',
+    clock: systemClock,
+    currentKey: process.env.PROVIDER_WEBHOOK_SECRET_CURRENT || 'mock-webhook-key',
     payments: new Map(),
     events: [],
   });
@@ -27,16 +24,18 @@ export async function POST(request: Request, ctx: { params: Promise<{ provider: 
     const verified = await adapter.verifyAndNormalizeWebhook(raw, request.headers);
     const txId = (verified.event.normalizedData as { transactionId?: string } | undefined)
       ?.transactionId;
-    await processCanonicalProviderEvent(getStore(), inbox, {
-      actor: {
-        actorType: 'PROVIDER',
-        actorId: 'mock',
-        authStrength: 'SERVICE',
-        requestId: crypto.randomUUID(),
-      },
-      event: verified.event,
-      signatureValid: verified.signatureValid,
-      transactionId: txId,
+    await withStore(async (uow) => {
+      await processCanonicalProviderEvent(uow, uow.inbox, {
+        actor: {
+          actorType: 'PROVIDER',
+          actorId: 'mock',
+          authStrength: 'SERVICE',
+          requestId: crypto.randomUUID(),
+        },
+        event: verified.event,
+        signatureValid: verified.signatureValid,
+        transactionId: txId,
+      });
     });
     return NextResponse.json({ ok: true });
   } catch {
