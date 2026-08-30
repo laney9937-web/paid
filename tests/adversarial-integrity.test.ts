@@ -10,7 +10,9 @@ import {
   createRefund,
   createTransactionLink,
   failCheckout,
+  placePayoutHold,
   processCanonicalProviderEvent,
+  recoverPendingProviderEvents,
   requestPayout,
 } from '@paid/domain';
 import { KNOWN_EVENT_TYPES } from '@paid/contracts';
@@ -349,6 +351,137 @@ describe('adversarial auth, secrets, money, trust', () => {
     );
     expect(web).not.toContain('@paid/test-support');
     expect(page).not.toContain('ensureDemoLink');
+  });
+
+  it('pending provider events stay unprocessed until the local mapping exists', async () => {
+    const uow = new MemoryUnitOfWork();
+    const inbox = new MemoryInbox();
+    const missing = await processCanonicalProviderEvent(uow, inbox, {
+      actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'early' },
+      event: capturedEvent({
+        transactionId: 'tx_not_yet',
+        providerPaymentId: 'pay_not_yet',
+        amount: money('5000'),
+        occurredAt: uow.clock.now(),
+        providerEventId: 'evt_early_capture',
+      }),
+      signatureValid: true,
+      transactionId: 'tx_not_yet',
+    });
+    expect(missing.outcome).toBe('STORED_PENDING_DEPENDENCY');
+    expect((await inbox.findByProviderEventId('mock', 'evt_early_capture'))?.processed).toBe(false);
+
+    const link = await createTransactionLink(uow, {
+      actor: creatorActor(),
+      amountMinor: '5000',
+      category: 'DIGITAL_COMMISSION',
+      deliveryDuration: 'PT48H',
+    });
+    const checkout = await createCheckout(
+      uow,
+      { actor: publicActor(), shareId: link.shareId, idempotencyKey: 'late-map' },
+      allow,
+    );
+    await inbox.insert({
+      providerEventId: 'evt_waiting_for_tx',
+      provider: 'mock',
+      processed: false,
+      event: capturedEvent({
+        transactionId: checkout.transactionId,
+        providerPaymentId: `pay_${checkout.transactionId}`,
+        amount: money('5000'),
+        occurredAt: uow.clock.now(),
+        providerEventId: 'evt_waiting_for_tx',
+      }),
+    });
+    await inbox.markOutcome('mock', 'evt_waiting_for_tx', 'STORED_PENDING_DEPENDENCY');
+    expect((await inbox.findByProviderEventId('mock', 'evt_waiting_for_tx'))?.processed).toBe(
+      false,
+    );
+    const recovered = await recoverPendingProviderEvents(uow, inbox);
+    expect(recovered.some((row) => row.outcome === 'APPLIED')).toBe(true);
+    expect((await inbox.findByProviderEventId('mock', 'evt_waiting_for_tx'))?.processed).toBe(true);
+  });
+
+  it('PAYOUT_FAILED after PAID is recon, not an overwrite, and REVERSED journals once', async () => {
+    const { uow, inbox } = await openCaptured();
+    const requested = await requestPayout(uow, {
+      actor: creatorActor(),
+      creatorId: 'creator_maya',
+      amountMinor: '2000',
+      destinationAgeHours: 72,
+      idempotencyKey: 'payout-then-fail',
+    });
+    const paidEvent = {
+      canonicalEventId: 'canon_paid_then_fail',
+      provider: 'mock',
+      providerConfigurationId: 'mock-provider-config',
+      adapterVersion: 'mock.v1',
+      schemaVersion: 1,
+      eventType: 'PAYOUT_PAID' as const,
+      providerEventId: 'evt_paid_then_fail',
+      providerResourceType: 'PAYOUT' as const,
+      providerResourceId: requested.payoutId,
+      occurredAt: uow.clock.now().toISOString(),
+      receivedAt: uow.clock.now().toISOString(),
+      amount: toWire(money('2000')),
+      rawPayloadDigest: 'q'.repeat(64),
+      verificationKeyVersion: 'v1',
+      normalizedData: { payoutId: requested.payoutId, creatorId: 'creator_maya' },
+    };
+    await processCanonicalProviderEvent(uow, inbox, {
+      actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'paid' },
+      event: paidEvent,
+      signatureValid: true,
+    });
+    const failed = await processCanonicalProviderEvent(uow, inbox, {
+      actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'fail-after' },
+      event: {
+        ...paidEvent,
+        canonicalEventId: 'canon_fail_after_paid',
+        eventType: 'PAYOUT_FAILED',
+        providerEventId: 'evt_fail_after_paid',
+        rawPayloadDigest: 'f'.repeat(64),
+      },
+      signatureValid: true,
+    });
+    expect(failed.outcome).toBe('RECONCILIATION_REQUIRED');
+    expect((await uow.getPayout(requested.payoutId))?.state).toBe('PAID');
+    expect(uow.journals.filter((j) => j.sourceType === 'PAYOUT_PAID')).toHaveLength(1);
+    const reversed = await processCanonicalProviderEvent(uow, inbox, {
+      actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'rev' },
+      event: {
+        ...paidEvent,
+        canonicalEventId: 'canon_rev',
+        eventType: 'PAYOUT_REVERSED',
+        providerEventId: 'evt_rev',
+        rawPayloadDigest: 'v'.repeat(64),
+      },
+      signatureValid: true,
+    });
+    expect(reversed.outcome).toBe('APPLIED');
+    expect((await uow.getPayout(requested.payoutId))?.state).toBe('REVERSED');
+    expect(uow.journals.filter((j) => j.sourceType === 'PAYOUT_REVERSED')).toHaveLength(1);
+  });
+
+  it('SUPPORT cannot place a payout hold', async () => {
+    const uow = new MemoryUnitOfWork();
+    await expect(
+      placePayoutHold(uow, {
+        actor: opsActor(['SUPPORT']),
+        creatorId: 'creator_maya',
+        reason: 'nope',
+        idempotencyKey: 'support-hold-1',
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('checkout PayForm source does not send client geo', () => {
+    const pay = readFileSync(
+      new URL('../apps/web/app/t/[shareId]/pay-form.tsx', import.meta.url),
+      'utf8',
+    );
+    expect(pay).not.toContain('buyerJurisdiction');
   });
 
   it('expired step-up cannot payout', async () => {

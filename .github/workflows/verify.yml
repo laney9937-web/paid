@@ -13,30 +13,54 @@ on:
 permissions:
   contents: read
 
+# One self-hosted runner shares Postgres and TCP ports with the workspace.
+# Serialize every verify job so overlapping PR/push runs cannot contend.
 concurrency:
-  group: verify-${{ github.workflow }}-${{ github.ref }}
+  group: paid-verify
   cancel-in-progress: true
 
 jobs:
   verify:
-    # GitHub-hosted ubuntu-latest is preferred. This account is currently
-    # billing-locked ("job was not started because your account is locked due
-    # to a billing issue"), so the job runs on a registered Linux self-hosted
-    # runner until hosted minutes are unlocked.
+    # GitHub-hosted ubuntu-latest + a postgres:18 service is preferred. This
+    # account is billing-locked and the self-hosted runner has no docker.sock,
+    # so we pin Node/pnpm here and verify host PostgreSQL 18 instead of a
+    # GitHub service container.
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
     env:
       CI: "true"
+      E2E_WEB_PORT: "3100"
+      E2E_OPS_PORT: "3101"
       DATABASE_URL: postgres://paid:paid_local_only@127.0.0.1:5432/paid
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - name: Free isolated e2e ports
+        run: |
+          for p in 3100 3101; do
+            if command -v fuser >/dev/null 2>&1; then
+              fuser -k "${p}/tcp" 2>/dev/null || true
+            fi
+          done
+          pkill -f 'next start --port 3100' 2>/dev/null || true
+          pkill -f 'next start --port 3101' 2>/dev/null || true
+          sleep 1
       - name: Show toolchain
         run: |
           node -v
           pnpm -v
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Confirm PostgreSQL 18
+        run: node scripts/pg-version.mjs
       - name: Env
         run: cp .env.example .env
       - name: Migrate and seed
@@ -49,3 +73,14 @@ jobs:
         run: pnpm verify
       - name: SBOM
         run: pnpm sbom
+      - name: Upload reports
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-evidence
+          if-no-files-found: warn
+          path: |
+            docs/evidence/sbom.json
+            playwright-report
+            test-results

@@ -7,3 +7,4 @@ export * from './ids';
 export * from './money';
 export * from './states';
 export * from './tokens';
+export * from './checkout-body';

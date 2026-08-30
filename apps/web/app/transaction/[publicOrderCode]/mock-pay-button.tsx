@@ -13,15 +13,22 @@ export function MockPayButton() {
     try {
       const res = await fetch('/api/mock/complete-payment', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
         body: JSON.stringify({}),
+        cache: 'no-store',
       });
-      if (!res.ok) {
-        setError('Could not complete mock payment');
+      const payload = (await res.json()) as {
+        data?: { paymentState?: string };
+        error?: { message?: string };
+      };
+      if (!res.ok || payload.data?.paymentState !== 'CAPTURED') {
+        setError(payload.error?.message ?? 'Could not complete mock payment');
         setPending(false);
         return;
       }
-      window.location.reload();
+      const next = new URL(window.location.href);
+      next.searchParams.set('captured', '1');
+      window.location.assign(next.toString());
     } catch {
       setError('Network issue. Try again.');
       setPending(false);

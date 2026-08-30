@@ -17,6 +17,7 @@ import {
   chargebackAfterPayoutJournal,
   payoutFailedJournal,
   payoutJournal,
+  payoutReversedJournal,
   refundJournal,
 } from '../ledger-postings';
 import { newId } from '../uuid';
@@ -41,6 +42,9 @@ export interface InboxStore {
     providerEventId: string,
     outcome: ProviderEventOutcome,
   ): Promise<void>;
+  listUnprocessed(): Promise<
+    Array<{ provider: string; providerEventId: string; event: CanonicalProviderEvent }>
+  >;
 }
 
 export type ProviderEventResult = {
@@ -103,6 +107,32 @@ export async function processCanonicalProviderEvent(
   const outcome = await dispatchKnownEvent(uow, input);
   await inbox.markOutcome(input.event.provider, input.event.providerEventId, outcome);
   return result(outcome);
+}
+
+export async function recoverPendingProviderEvents(
+  uow: UnitOfWork,
+  inbox: InboxStore,
+): Promise<ProviderEventResult[]> {
+  const pending = await inbox.listUnprocessed();
+  const recovered: ProviderEventResult[] = [];
+  for (const row of pending) {
+    const fromData = (row.event.normalizedData as { transactionId?: string } | undefined)
+      ?.transactionId;
+    recovered.push(
+      await processCanonicalProviderEvent(uow, inbox, {
+        actor: {
+          actorType: 'PROVIDER',
+          actorId: 'recovery',
+          authStrength: 'SERVICE',
+          requestId: `recovery:${row.providerEventId}`,
+        },
+        event: row.event,
+        signatureValid: true,
+        transactionId: fromData,
+      }),
+    );
+  }
+  return recovered;
 }
 
 async function dispatchKnownEvent(
@@ -208,6 +238,9 @@ async function applyCaptured(
 ): Promise<ProviderEventOutcome> {
   const transactionId = txId(input);
   if (!transactionId) return 'STORED_PENDING_DEPENDENCY';
+  const tx = await uow.getTransaction(transactionId);
+  const payment = await uow.getPaymentByTransaction(transactionId);
+  if (!tx || !payment) return 'STORED_PENDING_DEPENDENCY';
   if (await uow.hasLedgerSource('PAYMENT_CAPTURED', transactionId)) return 'DUPLICATE';
   await capturePaymentFromProvider(uow, {
     actor: input.actor,
@@ -422,6 +455,9 @@ async function applyPayoutFailed(
     return 'STORED_PENDING_DEPENDENCY';
   }
   if (payout.state === 'FAILED') return 'DUPLICATE';
+  if (payout.state === 'PAID' || (await uow.hasLedgerSource('PAYOUT_PAID', payout.id))) {
+    return 'RECONCILIATION_REQUIRED';
+  }
   if (
     payout.state === 'SUBMITTED' ||
     payout.state === 'IN_TRANSIT' ||
@@ -462,6 +498,19 @@ async function applyPayoutReversed(
   const data = input.event.normalizedData as { payoutId?: string } | undefined;
   const payout = await uow.getPayout(data?.payoutId ?? input.event.providerResourceId);
   if (!payout) return 'STORED_PENDING_DEPENDENCY';
+  if (payout.state === 'REVERSED') return 'DUPLICATE';
+  if (payout.state === 'PAID' || (await uow.hasLedgerSource('PAYOUT_PAID', payout.id))) {
+    if (!(await uow.hasLedgerSource('PAYOUT_REVERSED', payout.id))) {
+      await uow.appendJournal(
+        payoutReversedJournal({
+          payoutId: payout.id,
+          creatorId: payout.creatorId,
+          amount: payout.amount,
+          occurredAt: new Date(input.event.occurredAt),
+        }),
+      );
+    }
+  }
   await uow.updatePayout({
     ...payout,
     state: 'REVERSED',

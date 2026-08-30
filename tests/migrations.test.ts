@@ -47,6 +47,15 @@ describe('SQL migrations', () => {
     expect(sql4).toContain('audit_events_append_only');
   });
 
+  it('adds refund cap trigger for concurrent requests', () => {
+    const sql5 = readFileSync(
+      new URL('../packages/db/src/migrations/0005_refund_cap_inbox_recovery.sql', import.meta.url),
+      'utf8',
+    );
+    expect(sql5).toContain('refunds_must_not_exceed_captured');
+    expect(sql5).toContain('refunds_cap_captured_commit');
+  });
+
   it('adds staff_role as a schema fact', () => {
     const sql3 = readFileSync(
       new URL('../packages/db/src/migrations/0003_staff.sql', import.meta.url),

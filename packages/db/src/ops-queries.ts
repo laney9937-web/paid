@@ -243,3 +243,35 @@ export async function listOpsAudit(action = '', pageRaw?: string) {
     }),
   };
 }
+
+export async function loadReconSnapshot() {
+  const sql = getSql();
+  const n = (row: { n?: number } | undefined) => Number(row?.n ?? 0);
+  const captures =
+    await sql`SELECT count(*)::int AS n FROM transactions WHERE payment_state = 'CAPTURED'`;
+  const providerCaptures =
+    await sql`SELECT count(*)::int AS n FROM provider_events_inbox WHERE event_type = 'PAYMENT_CAPTURED' AND outcome = 'APPLIED'`;
+  const refunds = await sql`SELECT count(*)::int AS n FROM refunds WHERE state = 'SUCCEEDED'`;
+  const providerRefunds =
+    await sql`SELECT count(*)::int AS n FROM provider_events_inbox WHERE event_type = 'REFUND_SUCCEEDED' AND outcome = 'APPLIED'`;
+  const payouts = await sql`SELECT count(*)::int AS n FROM payouts WHERE state = 'PAID'`;
+  const providerPayouts =
+    await sql`SELECT count(*)::int AS n FROM provider_events_inbox WHERE event_type = 'PAYOUT_PAID' AND outcome = 'APPLIED'`;
+  return {
+    internalCaptures: n(captures[0] as { n?: number } | undefined),
+    providerCaptures: n(providerCaptures[0] as { n?: number } | undefined),
+    internalRefunds: n(refunds[0] as { n?: number } | undefined),
+    providerRefunds: n(providerRefunds[0] as { n?: number } | undefined),
+    internalPayouts: n(payouts[0] as { n?: number } | undefined),
+    providerPayouts: n(providerPayouts[0] as { n?: number } | undefined),
+  };
+}
+
+export async function retryDeadLetter(jobId: string): Promise<void> {
+  const sql = getSql();
+  await sql`
+    UPDATE outbox_jobs
+    SET state = 'PENDING', available_at = ${new Date()}, lease_until = null
+    WHERE id = ${jobId} AND state = 'DEAD_LETTER'
+  `;
+}

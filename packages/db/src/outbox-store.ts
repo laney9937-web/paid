@@ -1,7 +1,8 @@
 import type { OutboxRecord } from '@paid/domain';
-import { openSecret } from '@paid/domain';
+import { openSecret, recoverPendingProviderEvents } from '@paid/domain';
 import { postgresDomainConfig } from './domain-config';
 import { getSql } from './client';
+import { withPostgresUow } from './postgres-uow';
 
 export type RuntimeJob = OutboxRecord & { sideEffectAt?: Date | null };
 
@@ -14,6 +15,7 @@ export interface OutboxRuntime {
   deadLetter(id: string, error: string): Promise<void>;
   resolveSecret?(envelopeId: string): Promise<string | null>;
   purgeSecret?(envelopeId: string): Promise<void>;
+  recoverProviderInbox?(): Promise<number>;
 }
 
 function mapJob(row: Record<string, unknown>): RuntimeJob {
@@ -35,6 +37,12 @@ export function createPostgresOutboxRuntime(): OutboxRuntime {
   const sql = getSql();
   return {
     now: () => new Date(),
+    async recoverProviderInbox() {
+      const recovered = await withPostgresUow((uow) =>
+        recoverPendingProviderEvents(uow, uow.inbox),
+      );
+      return recovered.filter((row) => row.outcome === 'APPLIED').length;
+    },
     async leaseDueJobs(limit: number) {
       const now = new Date();
       return sql.begin(async (tx) => {

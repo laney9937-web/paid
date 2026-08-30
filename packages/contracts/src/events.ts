@@ -80,6 +80,16 @@ export const PROVIDER_EVENT_OUTCOMES = [
 
 export type ProviderEventOutcome = (typeof PROVIDER_EVENT_OUTCOMES)[number];
 
+export const TERMINAL_PROVIDER_OUTCOMES = [
+  'APPLIED',
+  'DUPLICATE',
+  'REJECTED_INVALID',
+] as const satisfies ReadonlyArray<ProviderEventOutcome>;
+
+export function isTerminalProviderOutcome(outcome: ProviderEventOutcome): boolean {
+  return (TERMINAL_PROVIDER_OUTCOMES as readonly string[]).includes(outcome);
+}
+
 export function isKnownEventType(eventType: string): eventType is KnownEventType {
   return (KNOWN_EVENT_TYPES as readonly string[]).includes(eventType);
 }

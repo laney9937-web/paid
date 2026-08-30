@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { errorEnvelope, isAppError, successEnvelope } from '@paid/contracts';
+import { checkoutBodySchema, errorEnvelope, isAppError, successEnvelope } from '@paid/contracts';
 import { decideCheckout } from '@paid/compliance';
 import { createCheckout } from '@paid/domain';
 import { loadConfig, takeRateLimit } from '@paid/config';
@@ -26,23 +26,17 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const raw = (await request.json()) as { shareId?: string; buyerJurisdiction?: string };
-    const shareId = typeof raw.shareId === 'string' ? raw.shareId.trim() : '';
-    const buyerJurisdiction =
-      typeof raw.buyerJurisdiction === 'string' ? raw.buyerJurisdiction.trim() : undefined;
-    if (shareId.length < 8 || shareId.length > 128) {
+    const parsed = checkoutBodySchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        errorEnvelope('VALIDATION_FAILED', 'shareId required', false, requestId),
+        errorEnvelope('VALIDATION_FAILED', 'Checkout body is invalid', false, requestId),
         { status: 400 },
       );
     }
-    if (buyerJurisdiction && (buyerJurisdiction.length < 2 || buyerJurisdiction.length > 16)) {
-      return NextResponse.json(
-        errorEnvelope('VALIDATION_FAILED', 'buyerJurisdiction is invalid', false, requestId),
-        { status: 400 },
-      );
-    }
+    const shareId = parsed.data.shareId;
     const config = loadConfig();
+    const buyerJurisdiction =
+      config.SIMULATOR_ENABLED && config.PAID_BUILD_MODE === 'PROVIDER_AGNOSTIC' ? 'US' : 'UNKNOWN';
     const result = await withStore(async (uow) => {
       const link = await uow.getLinkByShareId(shareId);
       if (!link) {

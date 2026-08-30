@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { computeTrust } from '@paid/trust';
+import { computeTrust, publicTrustPresentation } from '@paid/trust';
 import { withStore } from '../../../src/server/store';
 
 export default async function CreatorTrustPage({
@@ -35,6 +35,7 @@ export default async function CreatorTrustPage({
     };
   });
   if (!creator || !trust) notFound();
+  const presentation = publicTrustPresentation(creator.identityState, trust);
   const memberSince = creator.memberSince.toLocaleDateString('en-US', {
     month: 'short',
     year: 'numeric',
@@ -45,17 +46,25 @@ export default async function CreatorTrustPage({
       <div className="topbar">
         <div className="brand">Paid</div>
         <span className="badge" data-testid="trust-tier">
-          {trust.tier} TRUST
+          {presentation.trustLabel}
         </span>
       </div>
-      <h1>{creator.displayName} ✓</h1>
+      <h1>
+        {creator.displayName}
+        {presentation.identityVerified ? (
+          <span data-testid="identity-mark" aria-label="Identity verified">
+            {' '}
+            ✓
+          </span>
+        ) : null}
+      </h1>
       <p className="meta">
-        {trust.publicRating
-          ? `${trust.publicRating} ★`
-          : 'Rating appears after 10 eligible reviews'}{' '}
-        · Unique buyer counts are unpublished until buyer linkage exists
+        {trust.publicRating ? `${trust.publicRating} ★` : 'Rating not available yet'} · Unique buyer
+        counts are unpublished until buyer linkage exists
       </p>
-      <p className="meta">Identity privately verified · Member since {memberSince}</p>
+      <p className="meta" data-testid="identity-copy">
+        {presentation.identityCopy} · Member since {memberSince}
+      </p>
       <hr className="divider" />
       <p>
         Protected digital purchases. Your payment identity stays hidden from {creator.displayName}.

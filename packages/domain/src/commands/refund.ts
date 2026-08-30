@@ -23,7 +23,7 @@ export async function createRefund(
   }
   const tx = await uow.getTransaction(input.transactionId);
   if (!tx) throw new AppError('NOT_FOUND', 'Transaction not found');
-  const payment = await uow.getPaymentByTransaction(tx.id);
+  const payment = await uow.lockPaymentByTransaction(tx.id);
   if (!payment || payment.state !== 'CAPTURED') {
     throw new AppError('STATE_CONFLICT', 'No captured payment to refund');
   }

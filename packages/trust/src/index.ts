@@ -18,6 +18,27 @@ export type TrustSnapshot = {
 const PRIOR_MEAN = 4.2;
 const PRIOR_N = 8;
 
+export type PublicTrustPresentation = {
+  identityVerified: boolean;
+  identityCopy: string;
+  trustLabel: string;
+};
+
+/** Public copy must not claim HIGH TRUST or a verification mark without evidence. */
+export function publicTrustPresentation(
+  identityState: string,
+  trust: TrustSnapshot,
+): PublicTrustPresentation {
+  const identityVerified = identityState === 'VERIFIED';
+  const evidenceSufficient =
+    trust.tier === 'ESTABLISHED' || trust.tier === 'HIGH' || trust.tier === 'EXCEPTIONAL';
+  return {
+    identityVerified,
+    identityCopy: identityVerified ? 'Identity verified' : 'Identity not verified',
+    trustLabel: evidenceSufficient ? `${trust.tier} TRUST` : 'New creator',
+  };
+}
+
 export function computeTrust(inputs: TrustInputs, algorithmVersion = 'trust.v1'): TrustSnapshot {
   const bayes =
     inputs.eligibleReviews === 0

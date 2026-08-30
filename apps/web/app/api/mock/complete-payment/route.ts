@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { errorEnvelope, isAppError, successEnvelope, systemClock } from '@paid/contracts';
+import { AppError, errorEnvelope, isAppError, successEnvelope, systemClock } from '@paid/contracts';
+import { takeRateLimit } from '@paid/config';
 import { processCanonicalProviderEvent, resolveGuestSession } from '@paid/domain';
 import { createMockPaymentsAdapter, signMockBody } from '@paid/payments-mock';
 import { withStore } from '../../../../src/server/store';
@@ -9,6 +10,13 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const ip = request.headers.get('x-forwarded-for') ?? 'local';
+  if (!takeRateLimit(`mock-complete:${ip}`, 60, 60_000)) {
+    return NextResponse.json(
+      errorEnvelope('RATE_LIMITED', 'Too many mock capture attempts', true, requestId),
+      { status: 429 },
+    );
+  }
   if (process.env.PROVIDER_MODE && process.env.PROVIDER_MODE !== 'mock') {
     return NextResponse.json(errorEnvelope('NOT_FOUND', 'Not found', false, requestId), {
       status: 404,
@@ -19,11 +27,11 @@ export async function POST(request: Request) {
     const result = await withStore(async (uow) => {
       const session = await resolveGuestSession(uow, cookie);
       if (!session) {
-        throw Object.assign(new Error('unauth'), { code: 'UNAUTHENTICATED' });
+        throw new AppError('UNAUTHENTICATED', 'Guest session required');
       }
       const tx = await uow.getTransaction(session.transactionId);
       if (!tx) {
-        throw Object.assign(new Error('not-found'), { code: 'NOT_FOUND' });
+        throw new AppError('NOT_FOUND', 'Transaction not found');
       }
       const key = process.env.PROVIDER_WEBHOOK_SECRET_CURRENT || 'mock-webhook-key';
       const body = JSON.stringify({
@@ -47,14 +55,16 @@ export async function POST(request: Request) {
       const headers = new Headers();
       headers.set('x-mock-signature', signMockBody(body, key, 'v1'));
       headers.set('x-mock-timestamp', uow.clock.now().toISOString());
-      const verified = await adapter.verifyAndNormalizeWebhook(
-        new TextEncoder().encode(body),
-        headers,
-      );
-      if (!verified.signatureValid) {
-        throw Object.assign(new Error('unauth'), { code: 'UNAUTHENTICATED' });
+      let verified;
+      try {
+        verified = await adapter.verifyAndNormalizeWebhook(new TextEncoder().encode(body), headers);
+      } catch {
+        throw new AppError('UNAUTHENTICATED', 'Invalid mock provider signature');
       }
-      await processCanonicalProviderEvent(uow, uow.inbox, {
+      if (!verified.signatureValid) {
+        throw new AppError('UNAUTHENTICATED', 'Invalid mock provider signature');
+      }
+      const processed = await processCanonicalProviderEvent(uow, uow.inbox, {
         actor: { actorType: 'PROVIDER', actorId: 'mock', authStrength: 'SERVICE', requestId },
         event: {
           ...verified.event,
@@ -64,7 +74,10 @@ export async function POST(request: Request) {
         transactionId: tx.id,
       });
       const updated = await uow.getTransaction(tx.id);
-      return { publicOrderCode: tx.publicOrderCode, paymentState: updated?.paymentState };
+      if (updated?.paymentState !== 'CAPTURED') {
+        throw new AppError('PAYMENT_UNKNOWN', `Mock capture did not apply (${processed.outcome})`);
+      }
+      return { publicOrderCode: tx.publicOrderCode, paymentState: updated.paymentState };
     });
     return NextResponse.json(successEnvelope(result, requestId));
   } catch (error) {

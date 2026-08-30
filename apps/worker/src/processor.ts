@@ -8,6 +8,9 @@ export async function processOutbox(
   log: Logger,
   limit = 16,
 ): Promise<number> {
+  if (runtime.recoverProviderInbox) {
+    await runtime.recoverProviderInbox();
+  }
   let processed = 0;
   for (;;) {
     const jobs = await runtime.leaseDueJobs(limit);

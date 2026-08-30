@@ -39,6 +39,23 @@ try {
     ON CONFLICT (id) DO NOTHING
   `;
   await sql`
+    INSERT INTO users (id, email, email_digest, created_at, updated_at)
+    VALUES ('user_nova', 'nova@paid.example', 'digest_nova', ${now}, ${now})
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await sql`
+    INSERT INTO creator_profiles (
+      id, user_id, handle, display_name, onboarding_state, lane,
+      identity_state, age_state, sanctions_state, jurisdiction, member_since,
+      restricted, payout_hold, new_checkout_blocked, created_at, updated_at
+    ) VALUES (
+      'creator_nova', 'user_nova', 'nova', 'Nova', 'DRAFT', 'ORDINARY',
+      'UNVERIFIED', 'UNKNOWN', 'UNKNOWN', 'US-CA', ${now},
+      false, false, false, ${now}, ${now}
+    )
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await sql`
     INSERT INTO users (id, email, email_digest, created_at, updated_at, staff_role)
     VALUES ('user_ops', 'ops@paid.example', 'digest_ops', ${now}, ${now}, 'SUPPORT')
     ON CONFLICT (id) DO UPDATE SET staff_role = EXCLUDED.staff_role
@@ -55,7 +72,9 @@ try {
       ('user_ops', 'SUPPORT', ${now}),
       ('user_ops_risk', 'RISK', ${now}),
       ('user_ops_risk', 'PAYMENTS', ${now}),
-      ('user_ops_risk', 'DISPUTES', ${now})
+      ('user_ops_risk', 'DISPUTES', ${now}),
+      ('user_ops_risk', 'COMPLIANCE', ${now}),
+      ('user_ops_risk', 'SECURITY', ${now})
     ON CONFLICT DO NOTHING
   `;
   const keyring = loadConfig().tokenKeyring;

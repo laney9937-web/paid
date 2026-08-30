@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readContinueUrlFromOutbox } from '@paid/db';
+import { opsOrigin, webOrigin } from './origins';
 
 async function latestContinueUrl(template: string): Promise<string> {
   return readContinueUrlFromOutbox(template);
@@ -16,7 +17,7 @@ test('unauthenticated creator home and account redirect to sign-in', async ({ pa
 
 test('unauthenticated ops pages redirect to staff sign-in', async ({ page }) => {
   for (const path of ['/ops/cases', '/ops/audit', '/ops/risk']) {
-    await page.goto(`http://127.0.0.1:3001${path}`);
+    await page.goto(`${opsOrigin()}${path}`);
     await expect(page).toHaveURL(/\/ops\/sign-in/);
     await expect(page.getByTestId('ops-hold')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /Paid operations/i })).toBeVisible();
@@ -38,9 +39,9 @@ test('creator magic-link POST issue, GET continue does not consume, POST sets se
   expect(JSON.stringify(body)).not.toContain(token);
   const path = `${new URL(continueUrl).pathname}${new URL(continueUrl).search}`;
 
-  const firstGet = await request.get(`http://127.0.0.1:3000${path}`);
+  const firstGet = await request.get(`${webOrigin()}${path}`);
   const firstHtml = await firstGet.text();
-  const secondGet = await request.get(`http://127.0.0.1:3000${path}`);
+  const secondGet = await request.get(`${webOrigin()}${path}`);
   const secondHtml = await secondGet.text();
   expect(firstHtml).toContain('scanners can open this page without signing you in');
   expect(secondHtml).toContain('scanners can open this page without signing you in');
@@ -54,7 +55,7 @@ test('creator magic-link POST issue, GET continue does not consume, POST sets se
 });
 
 test('ops magic-link POST issue then consume sets staff session', async ({ page, request }) => {
-  const issued = await request.post('http://127.0.0.1:3001/api/ops/magic-link', {
+  const issued = await request.post(`${opsOrigin()}/api/ops/magic-link`, {
     headers: { accept: 'application/json', 'content-type': 'application/json' },
     data: { email: 'ops@paid.example' },
   });
@@ -62,9 +63,9 @@ test('ops magic-link POST issue then consume sets staff session', async ({ page,
   expect(body.message).toContain('If an account exists');
   const continueUrl = await latestContinueUrl('magic-link-ops');
   const path = `${new URL(continueUrl).pathname}${new URL(continueUrl).search}`;
-  const peek = await request.get(`http://127.0.0.1:3001${path}`);
+  const peek = await request.get(`${opsOrigin()}${path}`);
   expect(await peek.text()).toContain('scanners can open this page without signing you in');
-  await page.goto(`http://127.0.0.1:3001${path}`);
+  await page.goto(`${opsOrigin()}${path}`);
   await page.getByTestId('ops-magic-continue').click();
   await expect(page).toHaveURL(/\/ops\/cases/);
 });

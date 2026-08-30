@@ -22,7 +22,11 @@ import type {
   UnitOfWork,
 } from '@paid/domain';
 import { ACCOUNT, NONTERMINAL_RESERVATIONS, newId } from '@paid/domain';
-import type { CanonicalProviderEvent, ProviderEventOutcome } from '@paid/contracts';
+import {
+  isTerminalProviderOutcome,
+  type CanonicalProviderEvent,
+  type ProviderEventOutcome,
+} from '@paid/contracts';
 import { getSql } from './client';
 import { postgresDomainConfig } from './domain-config';
 
@@ -276,12 +280,31 @@ export class PostgresInbox implements InboxStore {
   }
 
   async markOutcome(provider: string, providerEventId: string, outcome: ProviderEventOutcome) {
+    const processedAt = isTerminalProviderOutcome(outcome) ? new Date() : null;
     await this.sql`
       UPDATE provider_events_inbox
-      SET processed_at = ${new Date()}, outcome = ${outcome}
+      SET processed_at = COALESCE(${processedAt}, processed_at), outcome = ${outcome}
       WHERE provider = ${provider} AND provider_event_id = ${providerEventId}
         AND processed_at IS NULL
     `;
+  }
+
+  async listUnprocessed() {
+    const rows = await this.sql`
+      SELECT provider, provider_event_id, payload
+      FROM provider_events_inbox
+      WHERE processed_at IS NULL
+      ORDER BY received_at
+      LIMIT 50
+    `;
+    return rows.map((raw) => {
+      const row = raw as Record<string, unknown>;
+      return {
+        provider: String(row.provider),
+        providerEventId: String(row.provider_event_id),
+        event: row.payload as CanonicalProviderEvent,
+      };
+    });
   }
 }
 
@@ -596,7 +619,14 @@ export class PostgresUnitOfWork implements UnitOfWork {
   }
   async getPaymentByTransaction(transactionId: string) {
     const rows = await this.sql`SELECT * FROM payments WHERE transaction_id = ${transactionId}`;
-    const row = rows[0] as Record<string, unknown> | undefined;
+    return this.mapPayment(rows[0] as Record<string, unknown> | undefined);
+  }
+  async lockPaymentByTransaction(transactionId: string) {
+    const rows = await this
+      .sql`SELECT * FROM payments WHERE transaction_id = ${transactionId} FOR UPDATE`;
+    return this.mapPayment(rows[0] as Record<string, unknown> | undefined);
+  }
+  private mapPayment(row: Record<string, unknown> | undefined): PaymentRecord | null {
     if (!row) return null;
     return {
       id: String(row.id),

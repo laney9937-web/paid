@@ -40,7 +40,7 @@ export function PayForm({ shareId }: { shareId: string }) {
           'content-type': 'application/json',
           'idempotency-key': keyRef.current,
         },
-        body: JSON.stringify({ shareId, buyerJurisdiction: 'US' }),
+        body: JSON.stringify({ shareId }),
       });
       const body = await res.json();
       if (!res.ok) {

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { money } from '@paid/contracts';
-import { createCheckout, createTransactionLink, processCanonicalProviderEvent } from '@paid/domain';
+import {
+  createCheckout,
+  createRefund,
+  createTransactionLink,
+  processCanonicalProviderEvent,
+} from '@paid/domain';
 import { getSql, withPostgresUow } from '@paid/db';
-import { capturedEvent, creatorActor, publicActor } from '@paid/test-support';
+import { capturedEvent, creatorActor, opsActor, publicActor } from '@paid/test-support';
 
 const allow = {
   outcome: 'ALLOW' as const,
@@ -88,5 +93,60 @@ describe('postgres unit of work', () => {
       SELECT action FROM audit_events WHERE subject_id = ${checkout.transactionId} AND action = 'PAYMENT_CAPTURED'
     `;
     expect(audits.length).toBeGreaterThan(0);
+  });
+
+  it('concurrent full refunds cannot both become REQUESTED', async () => {
+    const shareId = await withPostgresUow(async (uow) => {
+      const link = await createTransactionLink(uow, {
+        actor: creatorActor(),
+        amountMinor: '5000',
+        category: 'DIGITAL_SERVICE',
+        deliveryDuration: 'PT48H',
+      });
+      return link.shareId;
+    });
+    const checkout = await withPostgresUow(async (uow) =>
+      createCheckout(
+        uow,
+        { actor: publicActor(), shareId, idempotencyKey: `rf-${shareId}` },
+        allow,
+      ),
+    );
+    await withPostgresUow(async (uow) => {
+      await processCanonicalProviderEvent(uow, uow.inbox, {
+        actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'rf-cap' },
+        event: capturedEvent({
+          transactionId: checkout.transactionId,
+          providerPaymentId: `pay_${checkout.transactionId}`,
+          amount: money('5000'),
+          occurredAt: uow.clock.now(),
+          providerEventId: `evt_rf_${checkout.transactionId}`,
+        }),
+        signatureValid: true,
+        transactionId: checkout.transactionId,
+      });
+    });
+    const attempts = await Promise.allSettled([
+      withPostgresUow((uow) =>
+        createRefund(uow, {
+          actor: opsActor(),
+          transactionId: checkout.transactionId,
+          amountMinor: '5000',
+          idempotencyKey: `full-a-${checkout.transactionId}`,
+        }),
+      ),
+      withPostgresUow((uow) =>
+        createRefund(uow, {
+          actor: opsActor(),
+          transactionId: checkout.transactionId,
+          amountMinor: '5000',
+          idempotencyKey: `full-b-${checkout.transactionId}`,
+        }),
+      ),
+    ]);
+    const ok = attempts.filter((row) => row.status === 'fulfilled');
+    const denied = attempts.filter((row) => row.status === 'rejected');
+    expect(ok.length).toBe(1);
+    expect(denied.length).toBe(1);
   });
 });

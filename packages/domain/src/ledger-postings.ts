@@ -231,6 +231,38 @@ export function payoutFailedJournal(params: {
   };
 }
 
+export function payoutReversedJournal(params: {
+  payoutId: string;
+  creatorId: string;
+  amount: Money;
+  occurredAt: Date;
+}): LedgerEntryInput {
+  const lines: LedgerLineInput[] = [
+    {
+      accountCode: ACCOUNT.PAYOUT_CLEARING,
+      direction: 'DEBIT',
+      amount: params.amount,
+      creatorId: params.creatorId,
+    },
+    {
+      accountCode: ACCOUNT.CREATOR_PAYABLE,
+      direction: 'CREDIT',
+      amount: params.amount,
+      creatorId: params.creatorId,
+    },
+  ];
+  balanced(lines, params.amount.currency);
+  return {
+    id: newId(),
+    sourceType: 'PAYOUT_REVERSED',
+    sourceId: params.payoutId,
+    currency: params.amount.currency,
+    accountingRuleVersion: 'ledger.v1',
+    occurredAt: params.occurredAt,
+    lines,
+  };
+}
+
 export function chargebackAfterPayoutJournal(params: {
   transactionId: string;
   creatorId: string;

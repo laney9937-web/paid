@@ -82,6 +82,7 @@ export interface UnitOfWork {
 
   insertPayment(payment: PaymentRecord): Promise<void>;
   getPaymentByTransaction(transactionId: string): Promise<PaymentRecord | null>;
+  lockPaymentByTransaction(transactionId: string): Promise<PaymentRecord | null>;
   updatePayment(payment: PaymentRecord): Promise<void>;
 
   insertGuestCredential(credential: GuestCredentialRecord): Promise<void>;
