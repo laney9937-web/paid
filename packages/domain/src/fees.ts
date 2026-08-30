@@ -9,6 +9,22 @@ export function quoteFees(amount: Money, policy = MOCK_POLICY) {
     amount.currency,
   );
   const reserveAmount = applyBps(amount, policy.reserveBps);
+  const protectionVariable = applyBps(amount, policy.buyerProtectionBps);
+  const uncappedProtection =
+    protectionVariable.amountMinor + BigInt(policy.buyerProtectionFixedMinor);
+  const cap = BigInt(policy.buyerProtectionCapMinor);
+  const buyerProtectionFee = money(
+    uncappedProtection > cap ? cap : uncappedProtection,
+    amount.currency,
+  );
   const creatorGross = money(amount.amountMinor - platformFee.amountMinor, amount.currency);
-  return { platformFee, processorFeeEstimate, reserveAmount, creatorGross };
+  const totalToday = money(amount.amountMinor + buyerProtectionFee.amountMinor, amount.currency);
+  return {
+    platformFee,
+    processorFeeEstimate,
+    reserveAmount,
+    buyerProtectionFee,
+    creatorGross,
+    totalToday,
+  };
 }

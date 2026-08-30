@@ -29,6 +29,12 @@ export const sessions = pgTable('sessions', {
   expiresAt: ts('expires_at').notNull(),
   createdAt: ts('created_at').notNull(),
   rotatedAt: ts('rotated_at'),
+  authMethod: text('auth_method').notNull().default('EMAIL_LINK'),
+  authStrength: text('auth_strength').notNull().default('EMAIL_LINK'),
+  authenticatedAt: ts('authenticated_at'),
+  stepUpExpiresAt: ts('step_up_expires_at'),
+  revokedAt: ts('revoked_at'),
+  lastUsedAt: ts('last_used_at'),
 });
 
 export const creatorProfiles = pgTable(
@@ -151,6 +157,9 @@ export const transactionTermsSnapshots = pgTable('transaction_terms_snapshots', 
   platformFeeMinor: bigint('platform_fee_minor', { mode: 'bigint' }).notNull(),
   processorFeeEstimateMinor: bigint('processor_fee_estimate_minor', { mode: 'bigint' }).notNull(),
   reserveAmountMinor: bigint('reserve_amount_minor', { mode: 'bigint' }).notNull(),
+  buyerProtectionFeeMinor: bigint('buyer_protection_fee_minor', { mode: 'bigint' })
+    .notNull()
+    .default(0n),
   buyerProtectionPolicyVersion: text('buyer_protection_policy_version').notNull(),
   creatorAgreementVersion: text('creator_agreement_version').notNull(),
   jurisdictionPolicyVersion: text('jurisdiction_policy_version').notNull(),

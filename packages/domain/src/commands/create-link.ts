@@ -1,8 +1,10 @@
 import {
   AppError,
   assertPositive,
+  DELIVERY_DURATIONS,
   generateShareableLinkId,
   money,
+  TRANSACTION_CATEGORIES,
   type ActorContext,
   type DeliveryDuration,
   type TransactionCategory,
@@ -34,6 +36,12 @@ export async function createTransactionLink(
   if (!creator) throw new AppError('NOT_FOUND', 'Creator not found');
   if (creator.onboardingState !== 'ACTIVE' || creator.restricted || creator.newCheckoutBlocked) {
     throw new AppError('FORBIDDEN', 'Creator is not eligible to create links');
+  }
+  if (!(TRANSACTION_CATEGORIES as readonly string[]).includes(input.category)) {
+    throw new AppError('VALIDATION_FAILED', 'Invalid transaction category');
+  }
+  if (!(DELIVERY_DURATIONS as readonly string[]).includes(input.deliveryDuration)) {
+    throw new AppError('VALIDATION_FAILED', 'Invalid delivery duration');
   }
   const amount = money(input.amountMinor);
   assertPositive(amount, 'amount');

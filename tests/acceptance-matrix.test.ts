@@ -355,7 +355,7 @@ describe('C. Financial integrity', () => {
     expect(pending.pendingMinor).toBe(5000n);
     await captureOpened(uow, checkout.transactionId);
     const after = await uow.projectCreatorBalances('creator_maya', uow.clock.now());
-    expect(after.availableMinor).toBe(4000n);
+    expect(after.availableMinor).toBe(4250n);
     expect(after.reservedMinor).toBe(500n);
     expect(after.pendingMinor).toBe(0n);
     await requestPayout(uow, {
@@ -365,9 +365,10 @@ describe('C. Financial integrity', () => {
       destinationAgeHours: 72,
       idempotencyKey: 'payout-1',
     });
-    const paid = await uow.projectCreatorBalances('creator_maya', uow.clock.now());
-    expect(paid.availableMinor).toBe(0n);
-    expect(paid.paidMinor).toBe(4000n);
+    const reservedPayout = await uow.projectCreatorBalances('creator_maya', uow.clock.now());
+    expect(reservedPayout.availableMinor).toBe(250n);
+    expect(reservedPayout.inTransitMinor).toBe(4000n);
+    expect(reservedPayout.paidMinor).toBe(0n);
   });
 
   it('C-07 reconciliation catches missing capture, fee, refund, reserve and payout', () => {
@@ -533,7 +534,7 @@ describe('D. Fulfillment, protection and disputes', () => {
     const tx = await uow.getTransaction(checkout.transactionId);
     const snap = await uow.getSnapshot(tx!.snapshotId);
     expect(snap?.policyVersion).toBe('policy.v1.mock');
-    expect(snap?.feeScheduleVersion).toBe('fee.v1.mock');
+    expect(snap?.feeScheduleVersion).toBe('fee.v2.mock');
     expect(snap?.createdAt).toEqual(tx?.createdAt);
   });
 });
@@ -578,11 +579,33 @@ describe('E. Reviews and trust', () => {
   it('E-04 refunded review is excluded from the public aggregate', async () => {
     const { uow, checkout } = await openCheckout();
     await captureOpened(uow, checkout.transactionId);
-    await createRefund(uow, {
+    const refund = await createRefund(uow, {
       actor: opsActor(),
       transactionId: checkout.transactionId,
       amountMinor: '5000',
       idempotencyKey: 'full',
+    });
+    const inbox = new MemoryInbox();
+    await processCanonicalProviderEvent(uow, inbox, {
+      actor: { actorType: 'PROVIDER', authStrength: 'SERVICE', requestId: 'rf-e04' },
+      event: {
+        canonicalEventId: 'canon_rf_e04',
+        provider: 'mock',
+        providerConfigurationId: 'mock-provider-config',
+        adapterVersion: 'mock.v1',
+        schemaVersion: 1,
+        eventType: 'REFUND_SUCCEEDED',
+        providerEventId: 'evt_rf_e04',
+        providerResourceType: 'REFUND',
+        providerResourceId: 'prov_rf_e04',
+        occurredAt: uow.clock.now().toISOString(),
+        receivedAt: uow.clock.now().toISOString(),
+        amount: toWire(money('5000')),
+        rawPayloadDigest: 'r'.repeat(64),
+        verificationKeyVersion: 'v1',
+        normalizedData: { refundId: refund.refundId },
+      },
+      signatureValid: true,
     });
     await markDelivered(uow, {
       actor: creatorActor(),

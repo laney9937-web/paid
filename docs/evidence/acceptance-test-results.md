@@ -34,7 +34,7 @@ Status values: `VERIFIED` | `NOT_APPLICABLE` (with rationale) | `BLOCKED_EXTERNA
 | C-03 | Partial/full refund compensating | unit+sim | create-checkout.test.ts; simulator partial-then-full-refund | local | PASS | vitest | VERIFIED | refundable cap |
 | C-04 | Chargeback after payout | unit+sim | tests/acceptance-matrix.test.ts C-04; simulator chargeback-after-payout | local | PASS | vitest | VERIFIED | receivable, no auto-refund |
 | C-05 | Re-run cannot double post | unit | tests/acceptance-matrix.test.ts C-05 | local | PASS | vitest | VERIFIED | recapture idempotent |
-| C-06 | Dashboard equals ledger projections | unit | tests/acceptance-matrix.test.ts C-06 | local | PASS | vitest | VERIFIED | available/reserved/paid as-of |
+| C-06 | Dashboard equals ledger projections | unit | tests/acceptance-matrix.test.ts C-06 | local | PASS | vitest | VERIFIED | available/reserved/in-transit/paid as-of; request is not PAID |
 | C-07 | Reconciliation missing capture/fee/refund/reserve/payout | unit | tests/acceptance-matrix.test.ts C-07 | local | PASS | vitest | VERIFIED | runReconciliation |
 | C-08 | Manual adjustment dual-control | unit | tests/acceptance-matrix.test.ts C-08 | local | PASS | vitest | VERIFIED | reason + second approver |
 | C-09 | Restore from backup then reconcile | n/a | docs/runbooks/migration.md; REL-011 | n/a | n/a | docs/runbooks | NOT_APPLICABLE | No live host/PITR target in PROVIDER_AGNOSTIC; procedure documented |

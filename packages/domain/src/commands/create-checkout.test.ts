@@ -73,6 +73,10 @@ describe('create checkout reservation', () => {
     expect(b.alreadyExisted).toBe(true);
     expect(b.checkoutSessionId).toBe(a.checkoutSessionId);
     expect(b.transactionId).toBe(a.transactionId);
+    expect(b.guestToken).toBe(a.guestToken);
+    const persisted = JSON.stringify([...uow.idempotency.values()][0]?.resultJson);
+    expect(persisted).not.toContain(a.guestToken);
+    expect(persisted).not.toContain('/guest/access/');
   });
 
   it('same idempotency key with a different body is IDEMPOTENCY_CONFLICT', async () => {
@@ -276,7 +280,7 @@ describe('money and ledger', () => {
     const reserve = lines.find((l) => l.accountCode === 'creator.reserve_liability');
     expect(revenue?.direction).toBe('CREDIT');
     expect(reserve?.direction).toBe('CREDIT');
-    expect(revenue?.amount.amountMinor).toBe(500n);
+    expect(revenue?.amount.amountMinor).toBe(250n);
     expect(reserve?.amount.amountMinor).toBe(500n);
     expect(revenue?.accountCode).not.toBe(reserve?.accountCode);
   });

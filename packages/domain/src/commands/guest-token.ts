@@ -41,6 +41,15 @@ export async function exchangeGuestToken(
   }
   const updated: GuestCredentialRecord = { ...cred, consumedAt: now };
   await uow.updateGuestCredential(updated);
+  const envelope = await uow.findSecretEnvelopeByCredential(cred.id);
+  if (envelope && !envelope.consumedAt) {
+    await uow.updateSecretEnvelope({
+      ...envelope,
+      ciphertext: null,
+      authTag: null,
+      consumedAt: now,
+    });
+  }
   const tx = await uow.getTransaction(cred.transactionId);
   if (!tx) throw new AppError('NOT_FOUND', 'Transaction not found');
   const sessionToken = generateSecretToken();

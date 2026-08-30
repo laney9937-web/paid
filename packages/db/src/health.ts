@@ -12,7 +12,10 @@ export async function databaseHealth(): Promise<{
     const versions = await sql`SELECT version FROM schema_migrations`;
     const set = new Set(versions.map((row) => String((row as { version: string }).version)));
     const migrationsPending =
-      !set.has('0001_init') || !set.has('0002_auth_outbox') || !set.has('0003_staff');
+      !set.has('0001_init') ||
+      !set.has('0002_auth_outbox') ||
+      !set.has('0003_staff') ||
+      !set.has('0004_auth_financial_integrity');
     await sql`SELECT 1 FROM audit_events LIMIT 1`;
     await sql`SELECT 1 FROM outbox_jobs LIMIT 1`;
     await sql`SELECT 1 FROM ledger_entries LIMIT 1`;

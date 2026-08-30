@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MemoryUnitOfWork } from '@paid/test-support';
 import { createEmailMock } from '@paid/email-mock';
 import { createLogger } from '@paid/observability';
+import { sealSecret } from '@paid/domain';
 import { processOutbox } from './processor';
 import { createMemoryOutboxRuntime } from './memory-runtime';
 
@@ -82,12 +83,29 @@ describe('outbox worker', () => {
 
   it('EMAIL_MAGIC_LINK copies continueUrl into email variables', async () => {
     const uow = new MemoryUnitOfWork();
+    const sealed = sealSecret(
+      'http://127.0.0.1:3000/creator/sign-in/continue?token=one-time-secret',
+      uow.config.restrictedFieldKeyring,
+    );
+    await uow.insertSecretEnvelope({
+      id: 'env-magic',
+      purpose: 'MAGIC_LINK',
+      credentialId: null,
+      ciphertext: sealed.ciphertext,
+      nonce: sealed.nonce,
+      authTag: sealed.authTag,
+      keyVersion: sealed.keyVersion,
+      expiresAt: new Date(uow.clock.now().getTime() + 60_000),
+      consumedAt: null,
+      createdAt: uow.clock.now(),
+    });
     await uow.insertOutbox({
       id: 'job-magic',
       type: 'EMAIL_MAGIC_LINK',
       payload: {
         toDigest: 'recipient_digest',
-        continueUrl: 'http://127.0.0.1:3000/creator/sign-in/continue?token=one-time-secret',
+        envelopeId: 'env-magic',
+        template: 'magic-link',
       },
       dedupeKey: 'email-magic:t',
       availableAt: uow.clock.now(),
@@ -101,6 +119,8 @@ describe('outbox worker', () => {
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0]?.variables.continueUrl).toContain('token=one-time-secret');
     expect(email.sent[0]?.templateId).toBe('EMAIL_MAGIC_LINK');
+    expect(JSON.stringify(uow.outbox[0]?.payload)).not.toContain('one-time-secret');
+    expect(uow.envelopes.get('env-magic')?.ciphertext).toBeNull();
   });
 
   it('J-04 dead-letter after max attempts', async () => {

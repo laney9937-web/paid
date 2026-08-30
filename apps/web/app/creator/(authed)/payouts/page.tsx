@@ -21,8 +21,8 @@ export default async function PayoutsPage() {
         <p className="empty">Sign in to see payout projections.</p>
       )}
       <p className="notice">
-        There is no startup-financed instant payout path. Payout requests require a fresh passkey
-        step-up.
+        There is no startup-financed instant payout path. Payout requests require a fresh step-up
+        (STEP_UP_REQUIRED). This mock does not convert an email-link session into PASSKEY.
       </p>
       {session ? (
         <form className="stack" method="post" action="/api/creator/payouts">

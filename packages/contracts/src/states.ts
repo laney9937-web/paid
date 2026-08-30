@@ -71,6 +71,7 @@ export type DisputeState = (typeof DISPUTE_STATES)[number];
 
 export const REFUND_STATES = [
   'REQUESTED',
+  'SUBMITTED',
   'PROVIDER_PENDING',
   'SUCCEEDED',
   'FAILED',

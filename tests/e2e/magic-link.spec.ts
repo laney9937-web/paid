@@ -1,19 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { getSql } from '@paid/db';
+import { readContinueUrlFromOutbox } from '@paid/db';
 
 async function latestContinueUrl(template: string): Promise<string> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT payload FROM outbox_jobs
-    WHERE type = 'EMAIL_MAGIC_LINK'
-    ORDER BY created_at DESC
-    LIMIT 16
-  `;
-  for (const raw of rows) {
-    const payload = (raw as { payload: { continueUrl?: string; template?: string } }).payload;
-    if (payload?.template === template && payload.continueUrl) return payload.continueUrl;
-  }
-  throw new Error(`missing ${template} continueUrl`);
+  return readContinueUrlFromOutbox(template);
 }
 
 test('unauthenticated creator home and account redirect to sign-in', async ({ page }) => {

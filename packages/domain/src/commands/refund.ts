@@ -1,8 +1,9 @@
 import { AppError, money, type ActorContext } from '@paid/contracts';
-import { refundJournal } from '../ledger-postings';
 import { newId } from '../uuid';
 import { requestHash } from '../hash';
 import type { UnitOfWork } from '../ports';
+
+const OPEN_REFUND_STATES = new Set(['REQUESTED', 'SUBMITTED', 'PROVIDER_PENDING', 'SUCCEEDED']);
 
 export async function createRefund(
   uow: UnitOfWork,
@@ -12,7 +13,7 @@ export async function createRefund(
     amountMinor: string;
     idempotencyKey: string;
   },
-): Promise<{ refundId: string; alreadyExisted: boolean }> {
+): Promise<{ refundId: string; alreadyExisted: boolean; state: 'REQUESTED' }> {
   const allowed =
     input.actor.actorType === 'OPS' &&
     (input.actor.opsRoles?.includes('DISPUTES') || input.actor.opsRoles?.includes('PAYMENTS'));
@@ -29,7 +30,11 @@ export async function createRefund(
   const amount = money(input.amountMinor, payment.amount.currency);
   if (amount.amountMinor <= 0n)
     throw new AppError('VALIDATION_FAILED', 'Refund amount must be positive');
-  const remaining = payment.capturedAmount.amountMinor - payment.refundedAmount.amountMinor;
+  const existingRefunds = await uow.listRefunds(tx.id);
+  const reserved = existingRefunds
+    .filter((row) => OPEN_REFUND_STATES.has(row.state))
+    .reduce((sum, row) => sum + row.amount.amountMinor, 0n);
+  const remaining = payment.capturedAmount.amountMinor - reserved;
   if (amount.amountMinor > remaining) {
     throw new AppError('VALIDATION_FAILED', 'Refund exceeds refundable amount');
   }
@@ -47,31 +52,23 @@ export async function createRefund(
         'Idempotency key was reused with a different request',
       );
     }
-    return { refundId: JSON.parse(existing.resultJson).refundId as string, alreadyExisted: true };
+    return {
+      refundId: JSON.parse(existing.resultJson).refundId as string,
+      alreadyExisted: true,
+      state: 'REQUESTED',
+    };
   }
-  const snapshot = await uow.getSnapshot(tx.snapshotId);
-  if (!snapshot) throw new AppError('INTERNAL_ERROR', 'Missing snapshot');
   const now = uow.clock.now();
   const refundId = newId();
   await uow.insertRefund({
     id: refundId,
     transactionId: tx.id,
     amount,
-    state: 'SUCCEEDED',
-    providerRefundId: `mock_refund_${refundId}`,
+    state: 'REQUESTED',
+    providerRefundId: null,
     createdAt: now,
+    version: 1,
   });
-  await uow.updatePayment({
-    ...payment,
-    refundedAmount: {
-      amountMinor: payment.refundedAmount.amountMinor + amount.amountMinor,
-      currency: payment.amount.currency,
-    },
-    version: payment.version + 1,
-  });
-  await uow.appendJournal(
-    refundJournal({ transactionId: tx.id, snapshot, refundAmount: amount, occurredAt: now }),
-  );
   await uow.insertIdempotency({
     id: newId(),
     scope,
@@ -83,10 +80,24 @@ export async function createRefund(
   await uow.insertAudit({
     id: newId(),
     actor: input.actor,
-    action: 'REFUND_SUCCEEDED',
+    action: 'REFUND_REQUESTED',
     subjectType: 'refund',
     subjectId: refundId,
     createdAt: now,
   });
-  return { refundId, alreadyExisted: false };
+  await uow.insertOutbox({
+    id: newId(),
+    type: 'PROVIDER_CREATE_REFUND',
+    payload: {
+      refundId,
+      transactionId: tx.id,
+      amountMinor: amount.amountMinor.toString(),
+    },
+    dedupeKey: `provider-create-refund:${refundId}`,
+    availableAt: now,
+    attemptCount: 0,
+    maxAttempts: 8,
+    state: 'PENDING',
+  });
+  return { refundId, alreadyExisted: false, state: 'REQUESTED' };
 }

@@ -1,16 +1,26 @@
 import { NextResponse } from 'next/server';
-import { requireOpsSession } from '@paid/auth/http';
+import { requireFreshOpsRole, opsActorFromRequest } from '@paid/auth/http';
 import { withPostgresUow } from '@paid/db';
 import { newId } from '@paid/domain';
 import { isAppError } from '@paid/contracts';
 
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
   let session;
   try {
-    session = await requireOpsSession();
+    session = await requireFreshOpsRole('RISK');
   } catch (error) {
-    if (isAppError(error)) {
+    if (isAppError(error) && error.code === 'UNAUTHENTICATED') {
       return NextResponse.redirect(new URL('/ops/sign-in', request.url), 303);
+    }
+    if (isAppError(error) && error.code === 'STEP_UP_REQUIRED') {
+      return NextResponse.redirect(new URL('/ops/step-up?reason=hold', request.url), 303);
+    }
+    if (isAppError(error)) {
+      return NextResponse.json(
+        { error: { code: error.code, message: error.message, retryable: false, requestId } },
+        { status: error.httpStatus },
+      );
     }
     throw error;
   }
@@ -23,18 +33,12 @@ export async function POST(request: Request) {
     }
     await uow.insertAudit({
       id: newId(),
-      actor: {
-        actorType: 'OPS',
-        actorId: session.userId,
-        opsRoles: ['RISK'],
-        authStrength: 'PASSKEY',
-        requestId: crypto.randomUUID(),
-      },
+      actor: opsActorFromRequest(session, requestId),
       action: 'PAYOUT_HOLD',
       subjectType: 'creator',
       subjectId: creatorId,
       createdAt: uow.clock.now(),
     });
   });
-  return NextResponse.redirect(new URL('/ops/cases', request.url), 303);
+  return NextResponse.redirect(new URL('/ops/risk', request.url), 303);
 }

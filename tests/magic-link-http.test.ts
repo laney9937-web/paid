@@ -7,7 +7,14 @@ import {
   OPS_SESSION_COOKIE,
 } from '@paid/auth';
 import { loadConfig } from '@paid/config';
-import { consumeMagicLink, emailDigest, getSql, loadLocalEnv, peekMagicLink } from '@paid/db';
+import {
+  consumeMagicLink,
+  emailDigest,
+  getSql,
+  loadLocalEnv,
+  peekMagicLink,
+  readContinueUrlFromOutbox,
+} from '@paid/db';
 import { POST as issueCreator } from '../apps/web/app/api/creator/magic-link/route';
 import { GET as getCreatorConsume } from '../apps/web/app/api/creator/magic-link/consume/route';
 import { POST as issueOps } from '../apps/ops/app/api/ops/magic-link/route';
@@ -16,18 +23,7 @@ import { GET as getOpsConsume } from '../apps/ops/app/api/ops/magic-link/consume
 loadLocalEnv();
 
 async function latestContinueUrl(template: string): Promise<string> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT payload FROM outbox_jobs
-    WHERE type = 'EMAIL_MAGIC_LINK'
-    ORDER BY created_at DESC
-    LIMIT 16
-  `;
-  for (const raw of rows) {
-    const payload = (raw as { payload: { continueUrl?: string; template?: string } }).payload;
-    if (payload?.template === template && payload.continueUrl) return payload.continueUrl;
-  }
-  throw new Error(`missing ${template} continueUrl in outbox`);
+  return readContinueUrlFromOutbox(template);
 }
 
 function tokenFrom(continueUrl: string): string {
@@ -68,9 +64,13 @@ describe('magic-link HTTP issue and consume', () => {
     const jobs = await sql`
       SELECT payload FROM outbox_jobs WHERE type = 'EMAIL_MAGIC_LINK' ORDER BY created_at DESC LIMIT 1
     `;
-    const payload = (jobs[0] as { payload: { toDigest: string; continueUrl: string } }).payload;
+    const payload = (
+      jobs[0] as { payload: { toDigest: string; envelopeId?: string; continueUrl?: string } }
+    ).payload;
     expect(payload.toDigest).toBe(emailDigest('maya@paid.example'));
-    expect(payload.continueUrl).toBe(continueUrl);
+    expect(payload.continueUrl).toBeUndefined();
+    expect(payload.envelopeId).toBeTruthy();
+    expect(JSON.stringify(payload)).not.toContain(token);
 
     const keyring = loadConfig().tokenKeyring;
     expect(await peekMagicLink({ token, keyring, kind: 'CREATOR' })).toMatchObject({

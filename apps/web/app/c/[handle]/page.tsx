@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { computeTrust } from '@paid/trust';
-import { ensureDemoLink, withStore } from '../../../src/server/store';
+import { withStore } from '../../../src/server/store';
 
 export default async function CreatorTrustPage({
   params,
@@ -9,14 +9,14 @@ export default async function CreatorTrustPage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = await params;
-  await ensureDemoLink();
   const { creator, active, trust } = await withStore(async (uow) => {
     const found = await uow.getCreatorByHandle(handle);
     if (!found) return { creator: null, active: null, trust: null };
     const links = await uow.listLinksByCreator(found.id);
     const reviews = await uow.listReviewsByCreator(found.id);
     const eligible = reviews.filter((r) => r.includedInAggregate && r.rating);
-    const completedCount = await uow.countCapturedByCreator(found.id);
+    const txs = await uow.listTransactionsByCreator(found.id);
+    const completedCount = txs.filter((tx) => tx.fulfillmentState === 'BUYER_ACCEPTED').length;
     const tenureDays = Math.max(
       0,
       Math.floor((Date.now() - found.memberSince.getTime()) / 86400000),
@@ -27,7 +27,7 @@ export default async function CreatorTrustPage({
       trust: computeTrust({
         eligibleReviews: eligible.length,
         ratingSum: eligible.reduce((sum, r) => sum + (r.rating ?? 0), 0),
-        uniqueBuyers: completedCount,
+        uniqueBuyers: 0,
         completedCount,
         tenureDays,
         integrityFlags: found.restricted ? 1 : 0,
@@ -35,6 +35,11 @@ export default async function CreatorTrustPage({
     };
   });
   if (!creator || !trust) notFound();
+  const memberSince = creator.memberSince.toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
   return (
     <main className="page">
       <div className="topbar">
@@ -48,9 +53,9 @@ export default async function CreatorTrustPage({
         {trust.publicRating
           ? `${trust.publicRating} ★`
           : 'Rating appears after 10 eligible reviews'}{' '}
-        · {trust.publicCompleted ?? 'Completed volume appears after 20 unique buyers'} completed
+        · Unique buyer counts are unpublished until buyer linkage exists
       </p>
-      <p className="meta">Identity privately verified · Member since Jan 2026</p>
+      <p className="meta">Identity privately verified · Member since {memberSince}</p>
       <hr className="divider" />
       <p>
         Protected digital purchases. Your payment identity stays hidden from {creator.displayName}.

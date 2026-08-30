@@ -1,7 +1,7 @@
 {
   "bomFormat": "Paid-SBOM",
   "specVersion": "1.0",
-  "created": "2026-08-30T03:58:26.112Z",
+  "created": "2026-08-30T05:17:37.831Z",
   "node": "v24.19.0",
   "packageManager": "pnpm@10.15.1",
   "lockfileSha256": "dc9ccca730d5e132fdd7e99dca6468e6fc34419afaa8c7aa1ea297f23bd995a0",

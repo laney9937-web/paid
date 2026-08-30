@@ -11,6 +11,6 @@ test('creator creates a one-time shareable link', async ({ page, context }) => {
   const url = await share.innerText();
   expect(url).toMatch(/\/t\/[A-Z0-9]+/i);
   await page.goto(url.trim());
-  await expect(page.getByText('$42.00')).toBeVisible();
+  await expect(page.locator('.amount', { hasText: '$42.00' })).toBeVisible();
   await expect(page.getByTestId('continue-to-pay')).toBeVisible();
 });

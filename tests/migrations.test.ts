@@ -34,6 +34,19 @@ describe('SQL migrations', () => {
     expect(sql2).toContain('side_effect_at');
   });
 
+  it('adds session truth, envelopes, payouts, journal trigger and append-only', () => {
+    const sql4 = readFileSync(
+      new URL('../packages/db/src/migrations/0004_auth_financial_integrity.sql', import.meta.url),
+      'utf8',
+    );
+    expect(sql4).toContain('staff_role_grants');
+    expect(sql4).toContain('secret_envelopes');
+    expect(sql4).toContain('CREATE TABLE IF NOT EXISTS payouts');
+    expect(sql4).toContain('ledger_source_uq');
+    expect(sql4).toContain('ledger_entry_balanced_commit');
+    expect(sql4).toContain('audit_events_append_only');
+  });
+
   it('adds staff_role as a schema fact', () => {
     const sql3 = readFileSync(
       new URL('../packages/db/src/migrations/0003_staff.sql', import.meta.url),

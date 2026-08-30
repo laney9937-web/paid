@@ -3,6 +3,7 @@ import { errorEnvelope, isAppError } from '@paid/contracts';
 import { requestPayout } from '@paid/domain';
 import { withStore } from '../../../../src/server/store';
 import { requireCreatorSession } from '@paid/auth/http';
+import { actorFromSession } from '@paid/auth';
 import { redirectToAppPath } from '../../../../src/server/app-redirect';
 
 export async function POST(request: Request) {
@@ -13,13 +14,7 @@ export async function POST(request: Request) {
     const amountMinor = String(form?.get('amountMinor') ?? '100');
     await withStore((uow) =>
       requestPayout(uow, {
-        actor: {
-          actorType: 'CREATOR',
-          actorId: session.userId,
-          creatorId: session.creatorId,
-          authStrength: 'EMAIL_LINK',
-          requestId,
-        },
+        actor: actorFromSession(session, requestId),
         creatorId: session.creatorId,
         amountMinor,
         destinationAgeHours: 72,

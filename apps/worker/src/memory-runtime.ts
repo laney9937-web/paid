@@ -41,5 +41,28 @@ export function createMemoryOutboxRuntime(
       job.state = 'DEAD_LETTER';
       job.lastError = error;
     },
+    async resolveSecret(envelopeId) {
+      const envelope = uow.envelopes.get(envelopeId);
+      if (!envelope?.ciphertext || !envelope.authTag || envelope.consumedAt) return null;
+      if (envelope.expiresAt <= uow.clock.now()) return null;
+      const { openSecret } = await import('@paid/domain');
+      return openSecret(
+        {
+          ciphertext: envelope.ciphertext,
+          nonce: envelope.nonce,
+          authTag: envelope.authTag,
+          keyVersion: envelope.keyVersion,
+        },
+        uow.config.restrictedFieldKeyring,
+      );
+    },
+    async purgeSecret(envelopeId) {
+      const envelope = uow.envelopes.get(envelopeId);
+      if (envelope) {
+        envelope.ciphertext = null;
+        envelope.authTag = null;
+        envelope.consumedAt = uow.clock.now();
+      }
+    },
   };
 }

@@ -86,6 +86,13 @@ describe('static product and security invariants', () => {
     }
   });
 
+  it('ops hold copies the verified session and requires RISK step-up', () => {
+    const hold = read('apps/ops/app/api/ops/hold/route.ts');
+    expect(hold).toContain("requireFreshOpsRole('RISK')");
+    expect(hold).not.toMatch(/authStrength:\s*'PASSKEY'/);
+    expect(hold).not.toMatch(/opsRoles:\s*\['RISK'\]/);
+  });
+
   it('mutating creator and ops APIs import session guards except magic-link issue', () => {
     const creatorApis = walk(join(root, 'apps/web/app/api/creator')).filter((f) =>
       f.endsWith('route.ts'),
@@ -99,13 +106,20 @@ describe('static product and security invariants', () => {
     for (const file of opsApis) {
       const rel = file.replaceAll('\\', '/');
       if (rel.includes('/magic-link/')) continue;
-      expect(readFileSync(file, 'utf8'), rel).toContain('requireOpsSession');
+      const src = readFileSync(file, 'utf8');
+      expect(
+        src.includes('requireOpsSession') ||
+          src.includes('requireFreshOpsRole') ||
+          src.includes('requireOpsRole'),
+        rel,
+      ).toBe(true);
     }
   });
 
   it('AUTH-001 magic-link HTTP delivers continueUrl and does not discard the token', () => {
     const issue = read('apps/web/app/api/creator/magic-link/route.ts');
-    expect(issue).toContain('continueUrl');
+    expect(issue).toContain('envelopeId');
+    expect(issue).toContain('sealSecret');
     expect(issue).not.toContain('void issued.token');
     const consume = read('apps/web/app/api/creator/magic-link/consume/route.ts');
     expect(consume).toContain('export async function GET');

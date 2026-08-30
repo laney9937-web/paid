@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AppError } from '@paid/contracts';
+import { AppError, type OpsRole } from '@paid/contracts';
 import { loadConfig } from '@paid/config';
 import { lookupSession, type SessionKind } from '@paid/db';
 import { GUEST_SESSION_COOKIE, OPS_SESSION_COOKIE, WEB_SESSION_COOKIE } from './cookies';
+import { actorFromSession } from './actor';
 
 export async function optionalCreatorSession() {
   const jar = await cookies();
@@ -43,6 +44,29 @@ export async function requireOpsSessionOrRedirect() {
   const session = await optionalOpsSession();
   if (!session) redirect('/ops/sign-in');
   return session;
+}
+
+export async function requireOpsRole(role: OpsRole) {
+  const session = await requireOpsSession();
+  if (!session.opsRoles.includes(role)) {
+    throw new AppError('FORBIDDEN', 'Not allowed');
+  }
+  return session;
+}
+
+export async function requireFreshOpsRole(role: OpsRole) {
+  const session = await requireOpsRole(role);
+  if (session.authStrength !== 'STEP_UP' && session.authStrength !== 'PASSKEY') {
+    throw new AppError('STEP_UP_REQUIRED', 'Fresh authentication is required');
+  }
+  return session;
+}
+
+export function opsActorFromRequest(
+  session: Awaited<ReturnType<typeof requireOpsSession>>,
+  requestId: string,
+) {
+  return actorFromSession(session, requestId);
 }
 
 export async function readGuestCookie(): Promise<string | undefined> {

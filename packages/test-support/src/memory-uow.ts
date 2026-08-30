@@ -13,20 +13,29 @@ import type {
   LinkRecord,
   OutboxRecord,
   PaymentRecord,
+  PayoutRecord,
   RefundRecord,
   ReservationRecord,
   ReviewRecord,
+  SecretEnvelopeRecord,
   SnapshotRecord,
   TransactionRecord,
   UnitOfWork,
 } from '@paid/domain';
-import { ACCOUNT, NONTERMINAL_RESERVATIONS } from '@paid/domain';
-import type { CanonicalProviderEvent } from '@paid/contracts';
+import { ACCOUNT, NONTERMINAL_RESERVATIONS, defaultRestrictedKeyring } from '@paid/domain';
+import type { CanonicalProviderEvent, ProviderEventOutcome } from '@paid/contracts';
+
+function occ(current: { version: number } | undefined, nextVersion: number): void {
+  if (!current) throw new AppError('NOT_FOUND', 'Record not found');
+  if (current.version !== nextVersion - 1) {
+    throw new AppError('STATE_CONFLICT', 'This record was updated by another request');
+  }
+}
 
 export function defaultDomainConfig(): DomainConfig {
   return {
     policy: MOCK_POLICY,
-    feeScheduleVersion: 'fee.v1.mock',
+    feeScheduleVersion: 'fee.v2.mock',
     buyerProtectionPolicyVersion: 'protection.v1.mock',
     creatorAgreementVersion: 'agreement.v1.mock',
     jurisdictionPolicyVersion: 'jurisdiction.v1.mock',
@@ -36,11 +45,13 @@ export function defaultDomainConfig(): DomainConfig {
     policyVersion: 'policy.v1.mock',
     trustAlgorithmVersion: 'trust.v1',
     tokenKeyring: { currentVersion: 'v1', keys: { v1: 'test-token-hmac-key-v1-32bytes-min' } },
+    restrictedFieldKeyring: defaultRestrictedKeyring(),
     checkoutEnabled: true,
     newLinksEnabled: true,
     payoutEnabled: true,
     reviewEnabled: true,
     adultLaneEnabled: false,
+    requireKnownBuyerJurisdiction: false,
   };
 }
 
@@ -68,7 +79,10 @@ export function seedCreator(overrides: Partial<CreatorRecord> = {}): CreatorReco
 type JournalStored = LedgerEntryInput;
 
 export class MemoryInbox implements InboxStore {
-  readonly rows = new Map<string, { processed: boolean; event: CanonicalProviderEvent }>();
+  readonly rows = new Map<
+    string,
+    { processed: boolean; event: CanonicalProviderEvent; outcome?: ProviderEventOutcome }
+  >();
 
   async findByProviderEventId(provider: string, providerEventId: string) {
     const row = this.rows.get(`${provider}:${providerEventId}`);
@@ -79,6 +93,7 @@ export class MemoryInbox implements InboxStore {
       signatureValid: true,
       processed: row.processed,
       canonicalEventId: row.event.canonicalEventId,
+      outcome: row.outcome,
     };
   }
 
@@ -90,8 +105,17 @@ export class MemoryInbox implements InboxStore {
   }) {
     const key = `${record.provider}:${record.providerEventId}`;
     if (this.rows.has(key)) return 'duplicate' as const;
-    this.rows.set(key, { processed: record.processed, event: record.event });
+    this.rows.set(key, { processed: false, event: record.event });
     return 'inserted' as const;
+  }
+
+  async markOutcome(provider: string, providerEventId: string, outcome: ProviderEventOutcome) {
+    const key = `${provider}:${providerEventId}`;
+    const row = this.rows.get(key);
+    if (row) {
+      row.processed = true;
+      row.outcome = outcome;
+    }
   }
 }
 
@@ -112,6 +136,8 @@ export class MemoryUnitOfWork implements UnitOfWork {
   readonly journals: JournalStored[] = [];
   readonly disputes = new Map<string, DisputeRecord>();
   readonly refunds: RefundRecord[] = [];
+  readonly payouts = new Map<string, PayoutRecord>();
+  readonly envelopes = new Map<string, SecretEnvelopeRecord>();
   readonly reviews = new Map<string, ReviewRecord>();
   readonly linkLocks = new Map<string, Promise<void>>();
 
@@ -129,6 +155,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     return [...this.creators.values()].find((c) => c.handle === handle) ?? null;
   }
   async updateCreator(creator: CreatorRecord) {
+    occ(this.creators.get(creator.id), creator.version);
     this.creators.set(creator.id, { ...creator });
   }
 
@@ -146,6 +173,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     this.links.set(link.id, { ...link });
   }
   async updateLink(link: LinkRecord) {
+    occ(this.links.get(link.id), link.version);
     this.links.set(link.id, { ...link });
   }
 
@@ -172,6 +200,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     this.reservations.set(reservation.id, { ...reservation });
   }
   async updateReservation(reservation: ReservationRecord) {
+    occ(this.reservations.get(reservation.id), reservation.version);
     this.reservations.set(reservation.id, { ...reservation });
   }
   async getReservationByTransaction(transactionId: string) {
@@ -205,6 +234,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     return [...this.transactions.values()].find((t) => t.linkId === linkId) ?? null;
   }
   async updateTransaction(tx: TransactionRecord) {
+    occ(this.transactions.get(tx.id), tx.version);
     this.transactions.set(tx.id, { ...tx });
   }
   async listTransactionsByCreator(creatorId: string) {
@@ -218,6 +248,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     return this.checkouts.get(id) ?? null;
   }
   async updateCheckoutSession(session: CheckoutSessionRecord) {
+    occ(this.checkouts.get(session.id), session.version);
     this.checkouts.set(session.id, { ...session });
   }
 
@@ -228,6 +259,7 @@ export class MemoryUnitOfWork implements UnitOfWork {
     return [...this.payments.values()].find((p) => p.transactionId === transactionId) ?? null;
   }
   async updatePayment(payment: PaymentRecord) {
+    occ(this.payments.get(payment.id), payment.version);
     this.payments.set(payment.id, { ...payment });
   }
 
@@ -261,6 +293,16 @@ export class MemoryUnitOfWork implements UnitOfWork {
     if (debit !== credit) {
       throw new AppError('INTERNAL_ERROR', 'Unbalanced journal');
     }
+    if (
+      this.journals.some(
+        (row) =>
+          row.accountingRuleVersion === entry.accountingRuleVersion &&
+          row.sourceType === entry.sourceType &&
+          row.sourceId === entry.sourceId,
+      )
+    ) {
+      throw new AppError('STATE_CONFLICT', 'Duplicate ledger source');
+    }
     this.journals.push(entry);
   }
 
@@ -271,18 +313,67 @@ export class MemoryUnitOfWork implements UnitOfWork {
     return this.disputes.get(transactionId) ?? null;
   }
   async updateDispute(dispute: DisputeRecord) {
+    occ(this.disputes.get(dispute.transactionId), dispute.version);
     this.disputes.set(dispute.transactionId, { ...dispute });
   }
 
   async insertRefund(refund: RefundRecord) {
-    this.refunds.push(refund);
+    this.refunds.push({ ...refund });
+  }
+  async getRefund(id: string) {
+    return this.refunds.find((r) => r.id === id) ?? null;
   }
   async listRefunds(transactionId: string) {
     return this.refunds.filter((r) => r.transactionId === transactionId);
   }
   async updateRefund(refund: RefundRecord) {
     const idx = this.refunds.findIndex((r) => r.id === refund.id);
-    if (idx >= 0) this.refunds[idx] = refund;
+    if (idx < 0) throw new AppError('NOT_FOUND', 'Refund not found');
+    occ(this.refunds[idx], refund.version);
+    this.refunds[idx] = refund;
+  }
+
+  async insertPayout(payout: PayoutRecord) {
+    this.payouts.set(payout.id, { ...payout });
+  }
+  async getPayout(id: string) {
+    return this.payouts.get(id) ?? null;
+  }
+  async getPayoutByIdempotency(creatorId: string, keyHash: string) {
+    return (
+      [...this.payouts.values()].find(
+        (row) => row.creatorId === creatorId && row.idempotencyKeyHash === keyHash,
+      ) ?? null
+    );
+  }
+  async listPayoutsByCreator(creatorId: string) {
+    return [...this.payouts.values()].filter((row) => row.creatorId === creatorId);
+  }
+  async updatePayout(payout: PayoutRecord) {
+    occ(this.payouts.get(payout.id), payout.version);
+    this.payouts.set(payout.id, { ...payout });
+  }
+
+  async insertSecretEnvelope(envelope: SecretEnvelopeRecord) {
+    const nonceKey = envelope.nonce.toString('hex');
+    for (const existing of this.envelopes.values()) {
+      if (
+        existing.keyVersion === envelope.keyVersion &&
+        existing.nonce.toString('hex') === nonceKey
+      ) {
+        throw new AppError('INTERNAL_ERROR', 'Secret envelope nonce reused');
+      }
+    }
+    this.envelopes.set(envelope.id, { ...envelope });
+  }
+  async getSecretEnvelope(id: string) {
+    return this.envelopes.get(id) ?? null;
+  }
+  async findSecretEnvelopeByCredential(credentialId: string) {
+    return [...this.envelopes.values()].find((row) => row.credentialId === credentialId) ?? null;
+  }
+  async updateSecretEnvelope(envelope: SecretEnvelopeRecord) {
+    this.envelopes.set(envelope.id, { ...envelope });
   }
 
   async insertReview(review: ReviewRecord) {
@@ -328,11 +419,16 @@ export class MemoryUnitOfWork implements UnitOfWork {
   async listJournalLines(entryId: string) {
     return this.journals.find((j) => j.id === entryId)?.lines ?? [];
   }
+  async hasLedgerSource(sourceType: string, sourceId: string) {
+    return this.journals.some((j) => j.sourceType === sourceType && j.sourceId === sourceId);
+  }
   async projectCreatorBalances(creatorId: string, asOf: Date) {
     let available = 0n;
     let pending = 0n;
     let reserved = 0n;
+    let inTransit = 0n;
     let paid = 0n;
+    let negative = 0n;
     for (const journal of this.journals) {
       if (journal.occurredAt > asOf) continue;
       for (const line of journal.lines) {
@@ -341,12 +437,17 @@ export class MemoryUnitOfWork implements UnitOfWork {
           line.direction === 'CREDIT' ? line.amount.amountMinor : -line.amount.amountMinor;
         if (line.accountCode === ACCOUNT.CREATOR_PAYABLE) available += signed;
         if (line.accountCode === ACCOUNT.CREATOR_RESERVE) reserved += signed;
+        if (line.accountCode === ACCOUNT.PAYOUT_IN_TRANSIT) inTransit += signed;
         if (line.accountCode === ACCOUNT.PAYOUT_CLEARING && line.direction === 'CREDIT')
           paid += line.amount.amountMinor;
+        if (line.accountCode === ACCOUNT.CHARGEBACK_RECEIVABLE) negative += signed;
       }
     }
     for (const tx of this.transactions.values()) {
-      if (tx.creatorId === creatorId && tx.paymentState !== 'CAPTURED') {
+      if (
+        tx.creatorId === creatorId &&
+        (tx.paymentState === 'CREATED' || tx.paymentState === 'AUTHORIZED')
+      ) {
         pending += tx.amount.amountMinor;
       }
     }
@@ -354,7 +455,9 @@ export class MemoryUnitOfWork implements UnitOfWork {
       availableMinor: available,
       pendingMinor: pending,
       reservedMinor: reserved,
+      inTransitMinor: inTransit,
       paidMinor: paid,
+      negativeMinor: negative,
     };
   }
 }

@@ -6,6 +6,9 @@ export type ActorType = (typeof ACTOR_TYPES)[number];
 export const AUTH_STRENGTHS = ['NONE', 'EMAIL_LINK', 'PASSKEY', 'STEP_UP', 'SERVICE'] as const;
 export type AuthStrength = (typeof AUTH_STRENGTHS)[number];
 
+export const AUTH_METHODS = ['NONE', 'EMAIL_LINK', 'PASSKEY', 'SERVICE'] as const;
+export type AuthMethod = (typeof AUTH_METHODS)[number];
+
 export const OPS_ROLES = [
   'SUPPORT',
   'DISPUTES',
@@ -23,6 +26,7 @@ export type ActorContext = Readonly<{
   guestTransactionId?: string;
   sessionId?: string;
   opsRoles?: readonly OpsRole[];
+  authMethod?: AuthMethod;
   authStrength: AuthStrength;
   requestId: string;
   ipHash?: string;
@@ -36,6 +40,7 @@ export const actorContextSchema = z.object({
   guestTransactionId: z.string().optional(),
   sessionId: z.string().optional(),
   opsRoles: z.array(z.enum(OPS_ROLES)).optional(),
+  authMethod: z.enum(AUTH_METHODS).optional(),
   authStrength: z.enum(AUTH_STRENGTHS),
   requestId: z.string().min(8),
   ipHash: z.string().optional(),

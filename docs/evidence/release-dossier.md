@@ -1,8 +1,8 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `d3ae6c8bb1ed69be8009771e1db58bf0349addd3` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 109 unit / 15 Playwright)  
+**Commit:** `repair/auth-financial-trust-integrity` (SHA stamped after dual verify + GHA)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
-**Schema/migration version:** `0001_init` + `0002_auth_outbox`  
+**Schema/migration version:** `0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`  
 **Dependency lock digest:** `docs/evidence/sbom.json` (lock `8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78`)  
 **Build mode:** `PROVIDER_AGNOSTIC`  
 **Prepared by:** Integrating agent  
@@ -10,7 +10,7 @@
 
 ## 1. What was built
 
-Provider-agnostic V1 of Paid: creator links gated on hashed creator sessions, guest scanner-safe checkout (GET peek / POST exchange / HttpOnly guest cookie), signed mock capture (never public order code), public trust from real aggregates, double-entry ledger, Postgres outbox lease/ack worker, isolated ops app with hold mutation, trust/risk engines, T&S routing, fail-closed boot + OTel, and `pnpm verify`.
+Provider-agnostic V1 of Paid plus the auth/financial/trust integrity repair: session-true staff RBAC, envelope-encrypted one-time secrets, stable checkout idempotency, payout/refund request vs provider settlement, exhaustive provider-event outcomes, additive `0004` financial constraints, ledger-accurate balances, truthful public trust, role-gated ops consoles, and GitHub Actions for `pnpm verify`.
 
 ## 2. Architecture and key decisions
 

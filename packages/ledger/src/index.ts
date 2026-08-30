@@ -3,6 +3,8 @@ export {
   captureJournal,
   refundJournal,
   payoutJournal,
+  payoutReserveJournal,
+  payoutFailedJournal,
   chargebackAfterPayoutJournal,
   reserveReleaseJournal,
   manualAdjustmentJournal,

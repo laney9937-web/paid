@@ -6,3 +6,5 @@ export * from './load-env';
 export * from './auth-store';
 export * from './outbox-store';
 export * from './health';
+export * from './secret-read';
+export * from './ops-queries';

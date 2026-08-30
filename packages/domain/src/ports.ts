@@ -1,5 +1,6 @@
 import type { Clock, TokenKeyring } from '@paid/contracts';
 import type { MOCK_POLICY } from '@paid/config';
+import type { RestrictedKeyring } from './secret-envelope';
 import type {
   AuditRecord,
   CheckoutSessionRecord,
@@ -11,9 +12,11 @@ import type {
   LinkRecord,
   OutboxRecord,
   PaymentRecord,
+  PayoutRecord,
   RefundRecord,
   ReservationRecord,
   ReviewRecord,
+  SecretEnvelopeRecord,
   SnapshotRecord,
   TransactionRecord,
 } from './records';
@@ -30,11 +33,13 @@ export type DomainConfig = {
   policyVersion: string;
   trustAlgorithmVersion: string;
   tokenKeyring: TokenKeyring;
+  restrictedFieldKeyring: RestrictedKeyring;
   checkoutEnabled: boolean;
   newLinksEnabled: boolean;
   payoutEnabled: boolean;
   reviewEnabled: boolean;
   adultLaneEnabled: boolean;
+  requireKnownBuyerJurisdiction: boolean;
 };
 
 export interface UnitOfWork {
@@ -92,8 +97,20 @@ export interface UnitOfWork {
   updateDispute(dispute: DisputeRecord): Promise<void>;
 
   insertRefund(refund: RefundRecord): Promise<void>;
+  getRefund(id: string): Promise<RefundRecord | null>;
   listRefunds(transactionId: string): Promise<RefundRecord[]>;
   updateRefund(refund: RefundRecord): Promise<void>;
+
+  insertPayout(payout: PayoutRecord): Promise<void>;
+  getPayout(id: string): Promise<PayoutRecord | null>;
+  getPayoutByIdempotency(creatorId: string, keyHash: string): Promise<PayoutRecord | null>;
+  listPayoutsByCreator(creatorId: string): Promise<PayoutRecord[]>;
+  updatePayout(payout: PayoutRecord): Promise<void>;
+
+  insertSecretEnvelope(envelope: SecretEnvelopeRecord): Promise<void>;
+  getSecretEnvelope(id: string): Promise<SecretEnvelopeRecord | null>;
+  findSecretEnvelopeByCredential(credentialId: string): Promise<SecretEnvelopeRecord | null>;
+  updateSecretEnvelope(envelope: SecretEnvelopeRecord): Promise<void>;
 
   insertReview(review: ReviewRecord): Promise<void>;
   getReviewByTransaction(transactionId: string): Promise<ReviewRecord | null>;
@@ -106,6 +123,7 @@ export interface UnitOfWork {
   countSuccessfulPaymentsByLink(linkId: string): Promise<number>;
   journalIsBalanced(entryId: string): Promise<boolean>;
   listJournalLines(entryId: string): Promise<LedgerEntryInput['lines']>;
+  hasLedgerSource(sourceType: string, sourceId: string): Promise<boolean>;
   projectCreatorBalances(
     creatorId: string,
     asOf: Date,
@@ -113,6 +131,8 @@ export interface UnitOfWork {
     availableMinor: bigint;
     pendingMinor: bigint;
     reservedMinor: bigint;
+    inTransitMinor: bigint;
     paidMinor: bigint;
+    negativeMinor: bigint;
   }>;
 }

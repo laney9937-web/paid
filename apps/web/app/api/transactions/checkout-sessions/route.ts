@@ -2,22 +2,47 @@ import { NextResponse } from 'next/server';
 import { errorEnvelope, isAppError, successEnvelope } from '@paid/contracts';
 import { decideCheckout } from '@paid/compliance';
 import { createCheckout } from '@paid/domain';
-import { MOCK_POLICY } from '@paid/config';
+import { loadConfig, takeRateLimit } from '@paid/config';
 import { withStore } from '../../../../src/server/store';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
+  const ip = request.headers.get('x-forwarded-for') ?? 'local';
+  if (!takeRateLimit(`checkout:${ip}`, 30, 60_000)) {
+    return NextResponse.json(
+      errorEnvelope('RATE_LIMITED', 'Too many checkout attempts', true, requestId),
+      {
+        status: 429,
+      },
+    );
+  }
   try {
-    const body = (await request.json()) as { shareId?: string };
-    const shareId = body.shareId;
-    if (!shareId) {
+    const idempotencyKey = request.headers.get('idempotency-key');
+    if (!idempotencyKey || idempotencyKey.trim().length < 8) {
+      return NextResponse.json(
+        errorEnvelope('VALIDATION_FAILED', 'Idempotency-Key header is required', false, requestId),
+        { status: 400 },
+      );
+    }
+    const raw = (await request.json()) as { shareId?: string; buyerJurisdiction?: string };
+    const shareId = typeof raw.shareId === 'string' ? raw.shareId.trim() : '';
+    const buyerJurisdiction =
+      typeof raw.buyerJurisdiction === 'string' ? raw.buyerJurisdiction.trim() : undefined;
+    if (shareId.length < 8 || shareId.length > 128) {
       return NextResponse.json(
         errorEnvelope('VALIDATION_FAILED', 'shareId required', false, requestId),
         { status: 400 },
       );
     }
+    if (buyerJurisdiction && (buyerJurisdiction.length < 2 || buyerJurisdiction.length > 16)) {
+      return NextResponse.json(
+        errorEnvelope('VALIDATION_FAILED', 'buyerJurisdiction is invalid', false, requestId),
+        { status: 400 },
+      );
+    }
+    const config = loadConfig();
     const result = await withStore(async (uow) => {
       const link = await uow.getLinkByShareId(shareId);
       if (!link) {
@@ -25,19 +50,21 @@ export async function POST(request: Request) {
       }
       const creator = await uow.getCreator(link.creatorId);
       const decision = decideCheckout({
-        buildMode: 'PROVIDER_AGNOSTIC',
+        buildMode: config.PAID_BUILD_MODE,
         creatorOnboardingState: creator?.onboardingState ?? 'UNKNOWN',
         identityState: creator?.identityState ?? 'UNKNOWN',
         ageState: creator?.ageState ?? 'UNKNOWN',
         sanctionsState: creator?.sanctionsState ?? 'UNKNOWN',
         creatorJurisdiction: creator?.jurisdiction ?? 'UNKNOWN',
-        allowlist: ['US'],
+        buyerJurisdiction,
+        requireKnownBuyerJurisdiction: config.JURISDICTION_REQUIRE_BUYER,
+        allowlist: config.jurisdictionAllowlist,
         lane: link.lane,
-        adultLaneEnabled: false,
-        checkoutEnabled: true,
+        adultLaneEnabled: config.ADULT_LANE_ENABLED,
+        checkoutEnabled: config.CHECKOUT_ENABLED,
         ticketMinor: link.amount.amountMinor,
-        minTicketMinor: BigInt(MOCK_POLICY.minTicketMinor),
-        maxTicketMinor: BigInt(MOCK_POLICY.maxTicketMinor),
+        minTicketMinor: BigInt(uow.config.policy.minTicketMinor),
+        maxTicketMinor: BigInt(uow.config.policy.maxTicketMinor),
         requiredStatesKnown: Boolean(creator && creator.identityState !== 'UNKNOWN'),
       });
       return createCheckout(
@@ -45,7 +72,8 @@ export async function POST(request: Request) {
         {
           actor: { actorType: 'PUBLIC', authStrength: 'NONE', requestId },
           shareId,
-          idempotencyKey: request.headers.get('idempotency-key') ?? crypto.randomUUID(),
+          idempotencyKey,
+          buyerJurisdiction,
         },
         decision,
       );

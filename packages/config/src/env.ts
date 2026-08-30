@@ -63,6 +63,12 @@ const envSchema = z.object({
   RISK_RULES_VERSION: z.string().min(1),
   COMPLIANCE_POLICY_VERSION: z.string().min(1),
   RESTRICTED_FIELD_KEY: z.string().min(16),
+  RESTRICTED_FIELD_PREVIOUS_KEY: z.string().optional().default(''),
+  RESTRICTED_FIELD_CURRENT_VERSION: z.string().min(1).default('v1'),
+  JURISDICTION_REQUIRE_BUYER: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional().default(''),
   OTEL_SERVICE_NAME: z.string().default('paid'),
   PROVIDER_WEBHOOK_SECRET_CURRENT: z.string().optional().default(''),

@@ -38,15 +38,18 @@ async function performJob(
   email: EmailProviderAdapter,
   job: RuntimeJob,
 ): Promise<void> {
-  if (job.sideEffectAt) return;
+  const payload =
+    typeof job.payload === 'object' && job.payload ? (job.payload as Record<string, unknown>) : {};
+  const envelopeId = typeof payload.envelopeId === 'string' ? payload.envelopeId : '';
+  if (job.sideEffectAt) {
+    if (envelopeId && runtime.purgeSecret) await runtime.purgeSecret(envelopeId);
+    return;
+  }
   if (job.type.startsWith('EMAIL_')) {
-    const payload =
-      typeof job.payload === 'object' && job.payload
-        ? (job.payload as Record<string, unknown>)
-        : {};
     const variables: Record<string, string> = { kind: job.type };
-    if (typeof payload.continueUrl === 'string' && payload.continueUrl.length > 0) {
-      variables.continueUrl = payload.continueUrl;
+    if (envelopeId && runtime.resolveSecret) {
+      const url = await runtime.resolveSecret(envelopeId);
+      if (url) variables.continueUrl = url;
     }
     await email.send({
       toDigest: typeof payload.toDigest === 'string' ? payload.toDigest : 'recipient_digest',
@@ -55,6 +58,9 @@ async function performJob(
       idempotencyKey: job.dedupeKey,
       variables,
     });
+    if (envelopeId && runtime.purgeSecret) {
+      await runtime.purgeSecret(envelopeId);
+    }
   }
   await runtime.markSideEffect(job.id, runtime.now());
 }

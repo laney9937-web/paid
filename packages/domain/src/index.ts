@@ -1,5 +1,6 @@
 export * from './uuid';
 export * from './hash';
+export * from './secret-envelope';
 export * from './duration';
 export * from './fees';
 export * from './records';

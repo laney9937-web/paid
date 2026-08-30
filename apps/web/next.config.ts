@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
     '@paid/db',
     '@paid/domain',
     '@paid/observability',
-    '@paid/test-support',
     '@paid/trust',
     '@paid/ui',
   ],

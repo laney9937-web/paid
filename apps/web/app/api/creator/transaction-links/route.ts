@@ -9,6 +9,8 @@ import {
 import { createTransactionLink } from '@paid/domain';
 import { withStore } from '../../../../src/server/store';
 import { requireCreatorSession } from '@paid/auth/http';
+import { actorFromSession } from '@paid/auth';
+import { DELIVERY_DURATIONS, TRANSACTION_CATEGORIES } from '@paid/contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,17 +43,24 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if (
+      !(TRANSACTION_CATEGORIES as readonly string[]).includes(body.category) ||
+      !(DELIVERY_DURATIONS as readonly string[]).includes(body.deliveryDuration)
+    ) {
+      return NextResponse.json(
+        errorEnvelope(
+          'VALIDATION_FAILED',
+          'Invalid category or delivery duration',
+          false,
+          requestId,
+        ),
+        { status: 400 },
+      );
+    }
     const session = await requireCreatorSession();
     const link = await withStore((uow) =>
       createTransactionLink(uow, {
-        actor: {
-          actorType: 'CREATOR',
-          actorId: session.userId,
-          creatorId: session.creatorId,
-          sessionId: session.id,
-          authStrength: 'EMAIL_LINK',
-          requestId,
-        },
+        actor: actorFromSession(session, requestId),
         amountMinor: dollarsToMinor(body.amount!),
         category: body.category!,
         deliveryDuration: body.deliveryDuration!,

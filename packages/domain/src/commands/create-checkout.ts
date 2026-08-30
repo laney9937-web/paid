@@ -8,6 +8,7 @@ import {
 import { requestHash } from '../hash';
 import { quoteFees } from '../fees';
 import { newId } from '../uuid';
+import { sealSecret, openSecret } from '../secret-envelope';
 import { NONTERMINAL_RESERVATIONS } from '../machines/reservation';
 import type { UnitOfWork } from '../ports';
 import type {
@@ -35,6 +36,44 @@ export type CreateCheckoutResult = {
   alreadyExisted: boolean;
 };
 
+type PersistedCheckout = {
+  transactionId: string;
+  reservationId: string;
+  checkoutSessionId: string;
+  publicOrderCode: string;
+  envelopeId: string;
+};
+
+async function restoreFromIdempotency(
+  uow: UnitOfWork,
+  stored: PersistedCheckout,
+): Promise<CreateCheckoutResult> {
+  const envelope = await uow.getSecretEnvelope(stored.envelopeId);
+  let guestToken = '';
+  if (envelope?.ciphertext && envelope.authTag && !envelope.consumedAt) {
+    if (envelope.expiresAt > uow.clock.now()) {
+      guestToken = openSecret(
+        {
+          ciphertext: envelope.ciphertext,
+          nonce: envelope.nonce,
+          authTag: envelope.authTag,
+          keyVersion: envelope.keyVersion,
+        },
+        uow.config.restrictedFieldKeyring,
+      );
+    }
+  }
+  return {
+    transactionId: stored.transactionId,
+    reservationId: stored.reservationId,
+    checkoutSessionId: stored.checkoutSessionId,
+    publicOrderCode: stored.publicOrderCode,
+    redirectPath: guestToken ? `/guest/access/${guestToken}` : '/guest/access',
+    guestToken,
+    alreadyExisted: true,
+  };
+}
+
 export async function createCheckout(
   uow: UnitOfWork,
   input: CreateCheckoutInput,
@@ -42,6 +81,9 @@ export async function createCheckout(
 ): Promise<CreateCheckoutResult> {
   if (!uow.config.checkoutEnabled) {
     throw new AppError('FORBIDDEN', 'Checkout is disabled');
+  }
+  if (!input.idempotencyKey || input.idempotencyKey.trim().length === 0) {
+    throw new AppError('VALIDATION_FAILED', 'Idempotency key is required');
   }
   const link = await uow.getLinkByShareId(input.shareId);
   if (!link) throw new AppError('NOT_FOUND', 'Transaction not found');
@@ -67,8 +109,8 @@ export async function createCheckout(
         'Idempotency key was reused with a different request',
       );
     }
-    const existing = JSON.parse(existingIdemEarly.resultJson) as CreateCheckoutResult;
-    return { ...existing, alreadyExisted: true, guestToken: '' };
+    const existing = JSON.parse(existingIdemEarly.resultJson) as PersistedCheckout;
+    return restoreFromIdempotency(uow, existing);
   }
 
   if (locked.expiresAt && locked.expiresAt <= now && locked.state === 'ACTIVE') {
@@ -117,6 +159,8 @@ export async function createCheckout(
   const publicOrderCode = generatePublicOrderCode();
   const guestToken = generateSecretToken();
   const digest = hmacToken(uow.config.tokenKeyring, guestToken);
+  const sealed = sealSecret(guestToken, uow.config.restrictedFieldKeyring);
+  const envelopeId = newId();
 
   const snapshot: SnapshotRecord = {
     id: snapshotId,
@@ -132,6 +176,7 @@ export async function createCheckout(
     platformFee: fees.platformFee,
     processorFeeEstimate: fees.processorFeeEstimate,
     reserveAmount: fees.reserveAmount,
+    buyerProtectionFee: fees.buyerProtectionFee,
     buyerProtectionPolicyVersion: uow.config.buyerProtectionPolicyVersion,
     creatorAgreementVersion: uow.config.creatorAgreementVersion,
     jurisdictionPolicyVersion: uow.config.jurisdictionPolicyVersion,
@@ -217,21 +262,31 @@ export async function createCheckout(
     version: 1,
   });
   await uow.insertGuestCredential(guest);
-  const result: CreateCheckoutResult = {
+  await uow.insertSecretEnvelope({
+    id: envelopeId,
+    purpose: 'GUEST_ACCESS',
+    credentialId: guest.id,
+    ciphertext: sealed.ciphertext,
+    nonce: sealed.nonce,
+    authTag: sealed.authTag,
+    keyVersion: sealed.keyVersion,
+    expiresAt: guest.expiresAt,
+    consumedAt: null,
+    createdAt: now,
+  });
+  const persisted: PersistedCheckout = {
     transactionId,
     reservationId,
     checkoutSessionId,
     publicOrderCode,
-    redirectPath: `/guest/access/${guestToken}`,
-    guestToken,
-    alreadyExisted: false,
+    envelopeId,
   };
   await uow.insertIdempotency({
     id: newId(),
     scope,
     keyHash,
     requestHash: bodyHash,
-    resultJson: JSON.stringify({ ...result, guestToken: undefined }),
+    resultJson: JSON.stringify(persisted),
     createdAt: now,
   });
   await uow.insertAudit({
@@ -252,7 +307,15 @@ export async function createCheckout(
     maxAttempts: 8,
     state: 'PENDING',
   });
-  return result;
+  return {
+    transactionId,
+    reservationId,
+    checkoutSessionId,
+    publicOrderCode,
+    redirectPath: `/guest/access/${guestToken}`,
+    guestToken,
+    alreadyExisted: false,
+  };
 }
 
 export function checkoutReturnDoesNotCapture(): true {

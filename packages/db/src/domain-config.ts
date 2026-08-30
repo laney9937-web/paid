@@ -10,7 +10,7 @@ export function postgresDomainConfig(): DomainConfig {
   if (previous) keys.v0 = previous;
   return {
     policy: MOCK_POLICY,
-    feeScheduleVersion: process.env.FEE_SCHEDULE_VERSION ?? 'fee.v1.mock',
+    feeScheduleVersion: process.env.FEE_SCHEDULE_VERSION ?? 'fee.v2.mock',
     buyerProtectionPolicyVersion:
       process.env.BUYER_PROTECTION_POLICY_VERSION ?? 'protection.v1.mock',
     creatorAgreementVersion: 'agreement.v1.mock',
@@ -24,10 +24,20 @@ export function postgresDomainConfig(): DomainConfig {
       currentVersion: process.env.TOKEN_HMAC_CURRENT_VERSION ?? 'v1',
       keys,
     },
+    restrictedFieldKeyring: {
+      currentVersion: process.env.RESTRICTED_FIELD_CURRENT_VERSION ?? 'v1',
+      keys: {
+        v1: process.env.RESTRICTED_FIELD_KEY ?? 'local-dev-restricted-field-key-32b',
+        ...(process.env.RESTRICTED_FIELD_PREVIOUS_KEY
+          ? { v0: process.env.RESTRICTED_FIELD_PREVIOUS_KEY }
+          : {}),
+      },
+    },
     checkoutEnabled: process.env.CHECKOUT_ENABLED !== 'false',
     newLinksEnabled: process.env.NEW_LINKS_ENABLED !== 'false',
     payoutEnabled: process.env.PAYOUT_ENABLED !== 'false',
     reviewEnabled: process.env.REVIEW_ENABLED !== 'false',
     adultLaneEnabled: process.env.ADULT_LANE_ENABLED === 'true',
+    requireKnownBuyerJurisdiction: process.env.JURISDICTION_REQUIRE_BUYER !== 'false',
   };
 }

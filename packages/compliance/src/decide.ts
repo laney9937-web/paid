@@ -8,6 +8,7 @@ export type ComplianceInput = {
   sanctionsState: string;
   creatorJurisdiction: string;
   buyerJurisdiction?: string;
+  requireKnownBuyerJurisdiction?: boolean;
   allowlist: string[];
   lane: Lane;
   adultLaneEnabled: boolean;
@@ -64,6 +65,12 @@ export function decideCheckout(
       input.creatorJurisdiction === item || input.creatorJurisdiction.startsWith(`${item}-`),
   );
   if (!creatorOk || !US_PREFIX.test(input.creatorJurisdiction)) {
+    return { outcome: 'DENY', policyVersion, reasons: ['JURISDICTION_BLOCKED'] };
+  }
+  if (
+    input.requireKnownBuyerJurisdiction &&
+    (!input.buyerJurisdiction || input.buyerJurisdiction === 'UNKNOWN')
+  ) {
     return { outcome: 'DENY', policyVersion, reasons: ['JURISDICTION_BLOCKED'] };
   }
   if (input.buyerJurisdiction) {

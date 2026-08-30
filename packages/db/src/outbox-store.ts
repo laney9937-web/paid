@@ -1,4 +1,6 @@
 import type { OutboxRecord } from '@paid/domain';
+import { openSecret } from '@paid/domain';
+import { postgresDomainConfig } from './domain-config';
 import { getSql } from './client';
 
 export type RuntimeJob = OutboxRecord & { sideEffectAt?: Date | null };
@@ -10,6 +12,8 @@ export interface OutboxRuntime {
   ack(id: string): Promise<void>;
   retry(id: string, error: string, availableAt: Date): Promise<void>;
   deadLetter(id: string, error: string): Promise<void>;
+  resolveSecret?(envelopeId: string): Promise<string | null>;
+  purgeSecret?(envelopeId: string): Promise<void>;
 }
 
 function mapJob(row: Record<string, unknown>): RuntimeJob {
@@ -82,6 +86,33 @@ export function createPostgresOutboxRuntime(): OutboxRuntime {
         UPDATE outbox_jobs
         SET state = 'DEAD_LETTER', last_error = ${error}, lease_until = null
         WHERE id = ${id}
+      `;
+    },
+    async resolveSecret(envelopeId) {
+      const rows = await sql`
+        SELECT ciphertext, nonce, auth_tag, key_version, consumed_at, expires_at
+        FROM secret_envelopes WHERE id = ${envelopeId}
+      `;
+      const row = rows[0] as Record<string, unknown> | undefined;
+      if (!row || row.consumed_at || !row.ciphertext || !row.auth_tag) return null;
+      if (new Date(String(row.expires_at)) <= new Date()) return null;
+      const asBuffer = (value: unknown) =>
+        Buffer.isBuffer(value) ? value : Buffer.from(value as Uint8Array);
+      return openSecret(
+        {
+          ciphertext: asBuffer(row.ciphertext),
+          nonce: asBuffer(row.nonce),
+          authTag: asBuffer(row.auth_tag),
+          keyVersion: String(row.key_version),
+        },
+        postgresDomainConfig().restrictedFieldKeyring,
+      );
+    },
+    async purgeSecret(envelopeId) {
+      await sql`
+        UPDATE secret_envelopes
+        SET ciphertext = null, auth_tag = null, consumed_at = ${new Date()}
+        WHERE id = ${envelopeId}
       `;
     },
   };

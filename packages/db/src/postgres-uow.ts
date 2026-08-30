@@ -12,15 +12,17 @@ import type {
   LinkRecord,
   OutboxRecord,
   PaymentRecord,
+  PayoutRecord,
   RefundRecord,
   ReservationRecord,
   ReviewRecord,
+  SecretEnvelopeRecord,
   SnapshotRecord,
   TransactionRecord,
   UnitOfWork,
 } from '@paid/domain';
 import { ACCOUNT, NONTERMINAL_RESERVATIONS, newId } from '@paid/domain';
-import type { CanonicalProviderEvent } from '@paid/contracts';
+import type { CanonicalProviderEvent, ProviderEventOutcome } from '@paid/contracts';
 import { getSql } from './client';
 import { postgresDomainConfig } from './domain-config';
 
@@ -141,6 +143,7 @@ function mapSnapshot(row: Record<string, unknown>): SnapshotRecord {
     platformFee: usd(row.platform_fee_minor),
     processorFeeEstimate: usd(row.processor_fee_estimate_minor),
     reserveAmount: usd(row.reserve_amount_minor),
+    buyerProtectionFee: usd(row.buyer_protection_fee_minor ?? 0),
     buyerProtectionPolicyVersion: String(row.buyer_protection_policy_version),
     creatorAgreementVersion: String(row.creator_agreement_version),
     jurisdictionPolicyVersion: String(row.jurisdiction_policy_version),
@@ -153,6 +156,54 @@ function mapSnapshot(row: Record<string, unknown>): SnapshotRecord {
     taxAmount: usd(row.tax_amount_minor),
     trustSnapshotId: row.trust_snapshot_id == null ? null : String(row.trust_snapshot_id),
     policyVersion: String(row.policy_version),
+    createdAt: asDate(row.created_at),
+  };
+}
+
+function asBuffer(value: unknown): Buffer | null {
+  if (value == null) return null;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  return Buffer.from(value as ArrayBuffer);
+}
+
+function mapRefund(row: Record<string, unknown>): RefundRecord {
+  return {
+    id: String(row.id),
+    transactionId: String(row.transaction_id),
+    amount: usd(row.amount_minor),
+    state: row.state as RefundRecord['state'],
+    providerRefundId: row.provider_refund_id == null ? null : String(row.provider_refund_id),
+    createdAt: asDate(row.created_at),
+    version: Number(row.version ?? 1),
+  };
+}
+
+function mapPayout(row: Record<string, unknown>): PayoutRecord {
+  return {
+    id: String(row.id),
+    creatorId: String(row.creator_id),
+    amount: usd(row.amount_minor),
+    state: row.state as PayoutRecord['state'],
+    providerPayoutId: row.provider_payout_id == null ? null : String(row.provider_payout_id),
+    idempotencyKeyHash: String(row.idempotency_key_hash),
+    requestedAt: asDate(row.requested_at),
+    updatedAt: asDate(row.updated_at),
+    version: Number(row.version),
+  };
+}
+
+function mapEnvelope(row: Record<string, unknown>): SecretEnvelopeRecord {
+  return {
+    id: String(row.id),
+    purpose: String(row.purpose),
+    credentialId: row.credential_id == null ? null : String(row.credential_id),
+    ciphertext: asBuffer(row.ciphertext),
+    nonce: asBuffer(row.nonce) ?? Buffer.alloc(12),
+    authTag: asBuffer(row.auth_tag),
+    keyVersion: String(row.key_version),
+    expiresAt: asDate(row.expires_at),
+    consumedAt: asDateOrNull(row.consumed_at),
     createdAt: asDate(row.created_at),
   };
 }
@@ -210,8 +261,8 @@ export class PostgresInbox implements InboxStore {
           ${record.event.schemaVersion},
           ${record.event.occurredAt},
           ${record.event.receivedAt},
-          ${record.processed ? new Date() : null},
-          ${record.processed ? 'APPLIED' : 'RECEIVED'},
+          null,
+          'RECEIVED',
           ${this.sql.json(record.event as never)}
         )
       `;
@@ -222,6 +273,21 @@ export class PostgresInbox implements InboxStore {
       }
       throw error;
     }
+  }
+
+  async markOutcome(provider: string, providerEventId: string, outcome: ProviderEventOutcome) {
+    await this.sql`
+      UPDATE provider_events_inbox
+      SET processed_at = ${new Date()}, outcome = ${outcome}
+      WHERE provider = ${provider} AND provider_event_id = ${providerEventId}
+        AND processed_at IS NULL
+    `;
+  }
+}
+
+function mustOcc(rows: unknown[]): void {
+  if (!rows.length) {
+    throw new AppError('STATE_CONFLICT', 'This record was updated by another request');
   }
 }
 
@@ -245,7 +311,7 @@ export class PostgresUnitOfWork implements UnitOfWork {
     return rows[0] ? mapCreator(rows[0] as Record<string, unknown>) : null;
   }
   async updateCreator(creator: CreatorRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE creator_profiles SET
         handle = ${creator.handle},
         display_name = ${creator.displayName},
@@ -260,8 +326,10 @@ export class PostgresUnitOfWork implements UnitOfWork {
         new_checkout_blocked = ${creator.newCheckoutBlocked},
         updated_at = ${this.clock.now()},
         version = ${creator.version}
-      WHERE id = ${creator.id}
+      WHERE id = ${creator.id} AND version = ${creator.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
 
   async lockLink(id: string) {
@@ -292,7 +360,7 @@ export class PostgresUnitOfWork implements UnitOfWork {
     `;
   }
   async updateLink(link: LinkRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE transaction_links SET
         state = ${link.state},
         cancelled_at = ${link.cancelledAt},
@@ -300,8 +368,10 @@ export class PostgresUnitOfWork implements UnitOfWork {
         expires_at = ${link.expiresAt},
         updated_at = ${this.clock.now()},
         version = ${link.version}
-      WHERE id = ${link.id}
+      WHERE id = ${link.id} AND version = ${link.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
 
   async findNonterminalReservation(linkId: string) {
@@ -349,15 +419,17 @@ export class PostgresUnitOfWork implements UnitOfWork {
     }
   }
   async updateReservation(reservation: ReservationRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE checkout_reservations SET
         state = ${reservation.state},
         provider_checkout_id = ${reservation.providerCheckoutId},
         last_truth_check_at = ${reservation.lastTruthCheckAt},
         updated_at = ${this.clock.now()},
         version = ${reservation.version}
-      WHERE id = ${reservation.id}
+      WHERE id = ${reservation.id} AND version = ${reservation.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
   async getReservationByTransaction(transactionId: string) {
     const rows = await this.sql`
@@ -393,7 +465,8 @@ export class PostgresUnitOfWork implements UnitOfWork {
       INSERT INTO transaction_terms_snapshots (
         id, transaction_id, creator_id, creator_handle, creator_display_name, amount_minor, currency,
         category, delivery_duration, lane, fee_schedule_version, platform_fee_minor,
-        processor_fee_estimate_minor, reserve_amount_minor, buyer_protection_policy_version,
+        processor_fee_estimate_minor, reserve_amount_minor, buyer_protection_fee_minor,
+        buyer_protection_policy_version,
         creator_agreement_version, jurisdiction_policy_version, compliance_policy_version,
         provider_configuration_id, merchant_portfolio_id, statement_descriptor, descriptor_is_synthetic,
         tax_responsibility, tax_amount_minor, trust_snapshot_id, policy_version, created_at
@@ -402,7 +475,8 @@ export class PostgresUnitOfWork implements UnitOfWork {
         ${snapshot.creatorDisplayName}, ${n(snapshot.amount.amountMinor)}, ${snapshot.amount.currency},
         ${snapshot.category}, ${snapshot.deliveryDuration}, ${snapshot.lane}, ${snapshot.feeScheduleVersion},
         ${n(snapshot.platformFee.amountMinor)}, ${n(snapshot.processorFeeEstimate.amountMinor)},
-        ${n(snapshot.reserveAmount.amountMinor)}, ${snapshot.buyerProtectionPolicyVersion},
+        ${n(snapshot.reserveAmount.amountMinor)}, ${n(snapshot.buyerProtectionFee.amountMinor)},
+        ${snapshot.buyerProtectionPolicyVersion},
         ${snapshot.creatorAgreementVersion}, ${snapshot.jurisdictionPolicyVersion},
         ${snapshot.compliancePolicyVersion}, ${snapshot.providerConfigurationId},
         ${snapshot.merchantPortfolioId}, ${snapshot.statementDescriptor}, ${snapshot.descriptorIsSynthetic},
@@ -446,7 +520,7 @@ export class PostgresUnitOfWork implements UnitOfWork {
     return rows[0] ? mapTx(rows[0] as Record<string, unknown>) : null;
   }
   async updateTransaction(tx: TransactionRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE transactions SET
         payment_state = ${tx.paymentState},
         fulfillment_state = ${tx.fulfillmentState},
@@ -454,8 +528,10 @@ export class PostgresUnitOfWork implements UnitOfWork {
         delivery_deadline_at = ${tx.deliveryDeadlineAt},
         updated_at = ${this.clock.now()},
         version = ${tx.version}
-      WHERE id = ${tx.id}
+      WHERE id = ${tx.id} AND version = ${tx.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
   async listTransactionsByCreator(creatorId: string) {
     const rows = await this.sql`
@@ -493,15 +569,17 @@ export class PostgresUnitOfWork implements UnitOfWork {
     } satisfies CheckoutSessionRecord;
   }
   async updateCheckoutSession(session: CheckoutSessionRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE checkout_sessions SET
         state = ${session.state},
         redirect_url = ${session.redirectUrl},
         provider_checkout_id = ${session.providerCheckoutId},
         updated_at = ${this.clock.now()},
         version = ${session.version}
-      WHERE id = ${session.id}
+      WHERE id = ${session.id} AND version = ${session.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
 
   async insertPayment(payment: PaymentRecord) {
@@ -532,7 +610,7 @@ export class PostgresUnitOfWork implements UnitOfWork {
     } satisfies PaymentRecord;
   }
   async updatePayment(payment: PaymentRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE payments SET
         provider_payment_id = ${payment.providerPaymentId},
         state = ${payment.state},
@@ -540,8 +618,10 @@ export class PostgresUnitOfWork implements UnitOfWork {
         refunded_minor = ${n(payment.refundedAmount.amountMinor)},
         updated_at = ${this.clock.now()},
         version = ${payment.version}
-      WHERE id = ${payment.id}
+      WHERE id = ${payment.id} AND version = ${payment.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
 
   async insertGuestCredential(credential: GuestCredentialRecord) {
@@ -617,7 +697,8 @@ export class PostgresUnitOfWork implements UnitOfWork {
     if (debit !== credit) {
       throw new AppError('INTERNAL_ERROR', 'Unbalanced journal');
     }
-    await this.sql`
+    try {
+      await this.sql`
       INSERT INTO ledger_entries (
         id, source_type, source_id, transaction_id, currency, accounting_rule_version, occurred_at, recorded_at
       ) VALUES (
@@ -625,6 +706,12 @@ export class PostgresUnitOfWork implements UnitOfWork {
         ${entry.currency}, ${entry.accountingRuleVersion}, ${entry.occurredAt}, ${this.clock.now()}
       )
     `;
+    } catch (error) {
+      if (isUniqueViolation(error, 'ledger_source_uq')) {
+        throw new AppError('STATE_CONFLICT', 'Duplicate ledger source');
+      }
+      throw error;
+    }
     for (const line of entry.lines) {
       await this.sql`
         INSERT INTO ledger_postings (
@@ -663,40 +750,111 @@ export class PostgresUnitOfWork implements UnitOfWork {
     } satisfies DisputeRecord;
   }
   async updateDispute(dispute: DisputeRecord) {
-    await this.sql`
+    const rows = await this.sql`
       UPDATE internal_disputes SET
         state = ${dispute.state}, updated_at = ${this.clock.now()}, version = ${dispute.version}
-      WHERE id = ${dispute.id}
+      WHERE id = ${dispute.id} AND version = ${dispute.version - 1}
+      RETURNING id
     `;
+    mustOcc(rows);
   }
 
   async insertRefund(refund: RefundRecord) {
     await this.sql`
-      INSERT INTO refunds (id, transaction_id, amount_minor, currency, state, provider_refund_id, created_at)
+      INSERT INTO refunds (id, transaction_id, amount_minor, currency, state, provider_refund_id, created_at, version)
       VALUES (
         ${refund.id}, ${refund.transactionId}, ${n(refund.amount.amountMinor)}, ${refund.amount.currency},
-        ${refund.state}, ${refund.providerRefundId}, ${refund.createdAt}
+        ${refund.state}, ${refund.providerRefundId}, ${refund.createdAt}, ${refund.version}
       )
     `;
   }
+  async getRefund(id: string) {
+    const rows = await this.sql`SELECT * FROM refunds WHERE id = ${id}`;
+    return rows[0] ? mapRefund(rows[0] as Record<string, unknown>) : null;
+  }
   async listRefunds(transactionId: string) {
     const rows = await this.sql`SELECT * FROM refunds WHERE transaction_id = ${transactionId}`;
-    return rows.map((raw) => {
-      const row = raw as Record<string, unknown>;
-      return {
-        id: String(row.id),
-        transactionId: String(row.transaction_id),
-        amount: usd(row.amount_minor),
-        state: row.state as RefundRecord['state'],
-        providerRefundId: row.provider_refund_id == null ? null : String(row.provider_refund_id),
-        createdAt: asDate(row.created_at),
-      } satisfies RefundRecord;
-    });
+    return rows.map((raw) => mapRefund(raw as Record<string, unknown>));
   }
   async updateRefund(refund: RefundRecord) {
+    const rows = await this.sql`
+      UPDATE refunds SET
+        state = ${refund.state}, provider_refund_id = ${refund.providerRefundId}, version = ${refund.version}
+      WHERE id = ${refund.id} AND version = ${refund.version - 1}
+      RETURNING id
+    `;
+    mustOcc(rows);
+  }
+
+  async insertPayout(payout: PayoutRecord) {
     await this.sql`
-      UPDATE refunds SET state = ${refund.state}, provider_refund_id = ${refund.providerRefundId}
-      WHERE id = ${refund.id}
+      INSERT INTO payouts (
+        id, creator_id, amount_minor, currency, state, provider_payout_id, idempotency_key_hash,
+        requested_at, updated_at, version
+      ) VALUES (
+        ${payout.id}, ${payout.creatorId}, ${n(payout.amount.amountMinor)}, ${payout.amount.currency},
+        ${payout.state}, ${payout.providerPayoutId}, ${payout.idempotencyKeyHash},
+        ${payout.requestedAt}, ${payout.updatedAt}, ${payout.version}
+      )
+    `;
+  }
+  async getPayout(id: string) {
+    const rows = await this.sql`SELECT * FROM payouts WHERE id = ${id}`;
+    return rows[0] ? mapPayout(rows[0] as Record<string, unknown>) : null;
+  }
+  async getPayoutByIdempotency(creatorId: string, keyHash: string) {
+    const rows = await this.sql`
+      SELECT * FROM payouts WHERE creator_id = ${creatorId} AND idempotency_key_hash = ${keyHash}
+    `;
+    return rows[0] ? mapPayout(rows[0] as Record<string, unknown>) : null;
+  }
+  async listPayoutsByCreator(creatorId: string) {
+    const rows = await this.sql`
+      SELECT * FROM payouts WHERE creator_id = ${creatorId} ORDER BY requested_at DESC
+    `;
+    return rows.map((raw) => mapPayout(raw as Record<string, unknown>));
+  }
+  async updatePayout(payout: PayoutRecord) {
+    const rows = await this.sql`
+      UPDATE payouts SET
+        state = ${payout.state},
+        provider_payout_id = ${payout.providerPayoutId},
+        updated_at = ${payout.updatedAt},
+        version = ${payout.version}
+      WHERE id = ${payout.id} AND version = ${payout.version - 1}
+      RETURNING id
+    `;
+    mustOcc(rows);
+  }
+
+  async insertSecretEnvelope(envelope: SecretEnvelopeRecord) {
+    await this.sql`
+      INSERT INTO secret_envelopes (
+        id, purpose, credential_id, ciphertext, nonce, auth_tag, key_version, expires_at, consumed_at, created_at
+      ) VALUES (
+        ${envelope.id}, ${envelope.purpose}, ${envelope.credentialId}, ${envelope.ciphertext},
+        ${envelope.nonce}, ${envelope.authTag}, ${envelope.keyVersion}, ${envelope.expiresAt},
+        ${envelope.consumedAt}, ${envelope.createdAt}
+      )
+    `;
+  }
+  async getSecretEnvelope(id: string) {
+    const rows = await this.sql`SELECT * FROM secret_envelopes WHERE id = ${id}`;
+    return rows[0] ? mapEnvelope(rows[0] as Record<string, unknown>) : null;
+  }
+  async findSecretEnvelopeByCredential(credentialId: string) {
+    const rows = await this.sql`
+      SELECT * FROM secret_envelopes WHERE credential_id = ${credentialId} LIMIT 1
+    `;
+    return rows[0] ? mapEnvelope(rows[0] as Record<string, unknown>) : null;
+  }
+  async updateSecretEnvelope(envelope: SecretEnvelopeRecord) {
+    await this.sql`
+      UPDATE secret_envelopes SET
+        ciphertext = ${envelope.ciphertext},
+        auth_tag = ${envelope.authTag},
+        consumed_at = ${envelope.consumedAt}
+      WHERE id = ${envelope.id}
     `;
   }
 
@@ -814,6 +972,12 @@ export class PostgresUnitOfWork implements UnitOfWork {
       };
     });
   }
+  async hasLedgerSource(sourceType: string, sourceId: string) {
+    const rows = await this.sql`
+      SELECT 1 FROM ledger_entries WHERE source_type = ${sourceType} AND source_id = ${sourceId} LIMIT 1
+    `;
+    return rows.length > 0;
+  }
   async projectCreatorBalances(creatorId: string, asOf: Date) {
     const lines = await this.sql`
       SELECT p.account_code, p.direction, p.amount_minor, e.occurred_at
@@ -823,26 +987,32 @@ export class PostgresUnitOfWork implements UnitOfWork {
     `;
     let available = 0n;
     let reserved = 0n;
+    let inTransit = 0n;
     let paid = 0n;
+    let negative = 0n;
     for (const raw of lines) {
       const row = raw as Record<string, unknown>;
       const amount = BigInt(String(row.amount_minor));
       const signed = row.direction === 'CREDIT' ? amount : -amount;
       if (row.account_code === ACCOUNT.CREATOR_PAYABLE) available += signed;
       if (row.account_code === ACCOUNT.CREATOR_RESERVE) reserved += signed;
+      if (row.account_code === ACCOUNT.PAYOUT_IN_TRANSIT) inTransit += signed;
       if (row.account_code === ACCOUNT.PAYOUT_CLEARING && row.direction === 'CREDIT')
         paid += amount;
+      if (row.account_code === ACCOUNT.CHARGEBACK_RECEIVABLE) negative += signed;
     }
     const pendingRows = await this.sql`
       SELECT COALESCE(SUM(amount_minor), 0) AS n FROM transactions
-      WHERE creator_id = ${creatorId} AND payment_state <> 'CAPTURED'
+      WHERE creator_id = ${creatorId} AND payment_state IN ('CREATED', 'AUTHORIZED')
     `;
     const pending = BigInt(String((pendingRows[0] as { n: string | number | bigint }).n));
     return {
       availableMinor: available,
       pendingMinor: pending,
       reservedMinor: reserved,
+      inTransitMinor: inTransit,
       paidMinor: paid,
+      negativeMinor: negative,
     };
   }
 }

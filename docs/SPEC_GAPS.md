@@ -6,6 +6,7 @@
 |---|---|---|---|---|---|---|
 | GAP-001 | Exact live processor webhook header names | Public research is not a contract | PAY-004, LIVE-009 | Mock HMAC headers + canonical envelope | Provider ADR | OPEN |
 | GAP-002 | Exact adult-lane wallet approval | Apple Pay/Google Pay unapproved | PROD exclusions, LIVE-004 | Ordinary mock hosted redirect only | Counsel/provider | OPEN |
+| GAP-003 | Founder Boost / cash promotional payouts | Promotional money is a live-policy product, not a mock ledger shortcut | payout promotions | Recorded only; not implemented in V1 | Product/counsel | OPEN |
 
 ## ASSUMPTION
 

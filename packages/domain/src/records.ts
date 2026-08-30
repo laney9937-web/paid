@@ -65,6 +65,7 @@ export type SnapshotRecord = {
   platformFee: Money;
   processorFeeEstimate: Money;
   reserveAmount: Money;
+  buyerProtectionFee: Money;
   buyerProtectionPolicyVersion: string;
   creatorAgreementVersion: string;
   jurisdictionPolicyVersion: string;
@@ -194,8 +195,44 @@ export type RefundRecord = {
   id: string;
   transactionId: string;
   amount: Money;
-  state: 'REQUESTED' | 'PROVIDER_PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  state: 'REQUESTED' | 'SUBMITTED' | 'PROVIDER_PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
   providerRefundId: string | null;
+  createdAt: Date;
+  version: number;
+};
+
+export type PayoutRecord = {
+  id: string;
+  creatorId: string;
+  amount: Money;
+  state:
+    | 'REQUESTED'
+    | 'RISK_REVIEW'
+    | 'HELD'
+    | 'ELIGIBLE'
+    | 'SUBMITTED'
+    | 'IN_TRANSIT'
+    | 'PAID'
+    | 'FAILED'
+    | 'REVERSED'
+    | 'CANCELLED';
+  providerPayoutId: string | null;
+  idempotencyKeyHash: string;
+  requestedAt: Date;
+  updatedAt: Date;
+  version: number;
+};
+
+export type SecretEnvelopeRecord = {
+  id: string;
+  purpose: string;
+  credentialId: string | null;
+  ciphertext: Buffer | null;
+  nonce: Buffer;
+  authTag: Buffer | null;
+  keyVersion: string;
+  expiresAt: Date;
+  consumedAt: Date | null;
   createdAt: Date;
 };
 

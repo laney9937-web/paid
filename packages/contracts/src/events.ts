@@ -68,3 +68,18 @@ export const KNOWN_EVENT_TYPES = [
 ] as const;
 
 export type KnownEventType = (typeof KNOWN_EVENT_TYPES)[number];
+
+export const PROVIDER_EVENT_OUTCOMES = [
+  'APPLIED',
+  'DUPLICATE',
+  'STORED_PENDING_DEPENDENCY',
+  'RECONCILIATION_REQUIRED',
+  'UNKNOWN_ALERTED',
+  'REJECTED_INVALID',
+] as const;
+
+export type ProviderEventOutcome = (typeof PROVIDER_EVENT_OUTCOMES)[number];
+
+export function isKnownEventType(eventType: string): eventType is KnownEventType {
+  return (KNOWN_EVENT_TYPES as readonly string[]).includes(eventType);
+}
