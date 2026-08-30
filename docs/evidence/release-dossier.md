@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `91d30c201abfab73c0f5e53c0a9bd7df06729819`  
+**Commit:** `ca015b2dc59751f82c336bce4fa2c7a1a113af9c` (clean-checkout `pnpm verify` twice)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init`  
 **Dependency lock digest:** `docs/evidence/sbom.json`  
