@@ -28,3 +28,5 @@ export function assertNoSensitive(payload: unknown): void {
     throw new Error('sensitive payment data in log payload');
   }
 }
+
+export * from './otel';

@@ -88,7 +88,7 @@ export function CreateForm() {
       </button>
       {shareUrl ? (
         <>
-          <p className="meta">Ready to share · $50 · delivery within 48 hours</p>
+          <p className="meta">Ready to share · ${amount} · delivery within the selected deadline</p>
           <div className="linkbox" data-testid="share-url">
             {shareUrl}
           </div>

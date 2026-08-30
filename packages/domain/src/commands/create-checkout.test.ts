@@ -128,14 +128,23 @@ describe('guest token scanner-safe exchange', () => {
     expect(peek1.valid).toBe(true);
     expect(peek2.valid).toBe(true);
     expect(peek1.consumed).toBe(false);
+    const stored = [...uow.guests.values()][0];
+    expect(stored?.continuationIssuedAt).toBeNull();
+    expect(stored?.consumedAt).toBeNull();
     const exchanged = await exchangeGuestToken(uow, {
       actor: publicActor(),
       token: checkout.guestToken,
     });
     expect(exchanged.transactionId).toBe(checkout.transactionId);
+    expect(exchanged.sessionToken.length).toBeGreaterThan(20);
+    expect(exchanged.sessionToken).not.toBe(checkout.guestToken);
     await expect(
       exchangeGuestToken(uow, { actor: publicActor(), token: checkout.guestToken }),
     ).rejects.toBeInstanceOf(AppError);
+    const { resolveGuestSession } = await import('@paid/domain');
+    const session = await resolveGuestSession(uow, exchanged.sessionToken);
+    expect(session?.transactionId).toBe(checkout.transactionId);
+    expect(await resolveGuestSession(uow, checkout.guestToken)).toBeNull();
   });
 });
 

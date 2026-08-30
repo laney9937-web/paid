@@ -19,7 +19,7 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | PROD-004 | 10_ B | Guest buyer without account | guest-token.ts, /guest/access | G-03; tests/e2e/guest-checkout.spec.ts | playwright | local | VERIFIED | integrating agent | scanner-safe GET |
 | PROD-005 | 10_ B | Mock checkout pending/success/failure/unknown | payments-mock, apply-payment.ts | B-09; simulator happy/decline/timeout | mock:scenario | local | VERIFIED | integrating agent | |
 | PROD-006 | 10_ B | Secure receipt/status | apps/web/app/transaction/[publicOrderCode]/page.tsx | tests/e2e/guest-checkout.spec.ts; G-04 | playwright | local | VERIFIED | integrating agent | cookie vs order code |
-| PROD-007 | 10_ B | Mark delivered; confirm or dispute | fulfillment.ts | D-01 D-02 D-03 | vitest | local | VERIFIED | integrating agent | |
+| PROD-007 | 10_ B | Mark delivered; confirm or dispute | fulfillment.ts; `/api/creator/deliver`; `/api/guest/confirm`; `/api/guest/dispute` | D-01 D-02 D-03; guest/creator HTML forms | vitest | local | VERIFIED | integrating agent | HTTP mutations redirect to same-app paths |
 | PROD-008 | 10_ B | One verified review | review.ts | E-01 E-02 E-03 | vitest | local | VERIFIED | integrating agent | |
 | PROD-009 | 10_ B | Trust and payout projections | trust, projectCreatorBalances, payouts page | E-05 C-06 F-04 | vitest | local | VERIFIED | integrating agent | |
 | PROD-010 | 10_ B | No subs/tips/wallet/P2P/upload/feed/DMs | apps/** | tests/static-invariants.test.ts PROD-010 | n/a | local | VERIFIED | integrating agent | |
@@ -30,8 +30,8 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | AUTHZ-005 | 10_ C | Ops roles negative-tested | assertOpsRole, opsCaseDto | G-07 G-11 | vitest | local | VERIFIED | integrating agent | |
 | AUTHZ-006 | 10_ C | No universal admin / silent impersonation | OPS_ROLES, no wildcard admin | G-07 | vitest | local | VERIFIED | integrating agent | |
 | AUTHZ-007 | 10_ C | Break-glass/dual-control audited | applyManualAdjustment, recordSensitiveRead | C-08 G-08 | vitest | local | VERIFIED | integrating agent | |
-| AUTH-001 | 10_ D | Magic-link high entropy, hashed, short-lived | generateSecretToken, hmacToken, MAGIC_LINK_TTL_MS | I-02 I-05 | vitest | local | VERIFIED | integrating agent | |
-| AUTH-002 | 10_ D | Passkey RP/origin validation | packages/auth/src/better-auth.ts, passkeyRelyingParty | I-01 tests/static-invariants.test.ts | vitest | local | VERIFIED | integrating agent | WebAuthn UI is library-backed |
+| AUTH-001 | 10_ D | Magic-link high entropy, hashed, short-lived | issueMagicLink/consumeMagicLink; `/api/creator/magic-link`; hashed `auth_tokens` | I-02 I-05 | vitest | local | VERIFIED | integrating agent | Better Auth 1.7.2 has no magicLink plugin; first-party hashed tokens |
+| AUTH-002 | 10_ D | Passkey RP/origin validation | packages/auth/src/better-auth.ts; `/api/auth/[...all]` web+ops | I-01 tests/static-invariants.test.ts | vitest | local | VERIFIED | integrating agent | toNextJsHandler; browser ceremony is operator evidence |
 | AUTH-003 | 10_ D | Sessions Secure/HttpOnly/SameSite, revocable, rotating, expiring | cookies.ts, rotateSession, revokeSessions | I-03 I-04 I-08 | vitest | local | VERIFIED | integrating agent | |
 | AUTH-004 | 10_ D | List/revoke device sessions and passkeys | rotateSession, revokeSessions, creator/security page | I-08 | vitest | local | VERIFIED | integrating agent | |
 | AUTH-005 | 10_ D | Step-up for high-risk actions | changePayoutDestination, createRefund, requestPayout | F-01 D-05 | vitest | local | VERIFIED | integrating agent | |
@@ -85,7 +85,7 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | LEDGER-010 | 10_ H | Reserve never revenue | captureJournal accounts | C-02 | vitest | local | VERIFIED | integrating agent | |
 | REL-001 | 10_ I | Domain+audit+ledger+outbox atomic | postgres-uow.ts | tests/pg-uow.test.ts J-01 | vitest | local | VERIFIED | integrating agent | |
 | REL-002 | 10_ I | Locks/version; invalid transitions reject | machines/*, lockLink | A-01 reservation machine | vitest | local | VERIFIED | integrating agent | |
-| REL-003 | 10_ I | Outbox leases, retry, dead letter, replay | apps/worker/src/processor.ts | J-01..J-04 | vitest | local | VERIFIED | integrating agent | |
+| REL-003 | 10_ I | Outbox leases, retry, dead letter, replay | apps/worker/src/processor.ts; packages/db/src/outbox-store.ts | J-01..J-04; tests/pg-outbox.test.ts | vitest | local | VERIFIED | integrating agent | FOR UPDATE SKIP LOCKED lease + side_effect_at |
 | REL-004 | 10_ I | Worker crash/retry no duplicate side effects | processor.test.ts J-02 | J-02 | vitest | local | VERIFIED | integrating agent | |
 | REL-005 | 10_ I | Dependency timeout honest pending/outage | applyProviderCheckoutOutcome | B-09 | vitest | local | VERIFIED | integrating agent | |
 | REL-006 | 10_ I | Queue age/dead letters monitored | DEAD_LETTER state, processor log | J-04 | vitest | local | VERIFIED | integrating agent | |
@@ -103,7 +103,7 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | SEC-002 | 10_ K | CSP/HSTS/nosniff/referrer/permissions/cache | next.config.ts, securityHeaders | H-01 H-05 H-06 e2e ux-quality | playwright | local | VERIFIED | integrating agent | |
 | SEC-003 | 10_ K | Private data excluded from shared caches | no-store headers, sw.js | H-01 H-04 | vitest+e2e | local | VERIFIED | integrating agent | |
 | SEC-004 | 10_ K | CSRF/XSS/SQLi/SSRF/mass-assignment/IDOR/replay/rate-limit | B-07 G-06 H-09 H-10 webhook 64k | B-07 G-01 G-06 H-09 H-10 | vitest | local | VERIFIED | integrating agent | |
-| SEC-005 | 10_ K | Checkout third-party script inventory | CSP script-src 'self' only | H-05 | playwright | local | VERIFIED | integrating agent | no provider JS in mock |
+| SEC-005 | 10_ K | Checkout third-party script inventory | next.config.ts CSP | H-05 tests/e2e/ux-quality.spec.ts | playwright | local | VERIFIED | integrating agent | script-src 'self' 'unsafe-inline' for Next 16 hydration; no third-party checkout JS |
 | SEC-006 | 10_ K | No unapproved scripts on checkout | CSP + no dangerouslySetInnerHTML | H-05 H-09 | vitest | local | VERIFIED | integrating agent | |
 | SEC-007 | 10_ K | Secrets validated, absent from repo | fail-closed, .env.example placeholders | L-01 | vitest | local | VERIFIED | integrating agent | |
 | SEC-008 | 10_ K | Dependency/source scans | pnpm sbom, pinned deps | L-13 BUILD-007 | sbom.json | local | VERIFIED | integrating agent | container scan is live-host |
@@ -123,12 +123,12 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | OPS-002 | 10_ M | Dashboards/alerts coverage | apps/ops, outbox DEAD_LETTER, recon breaks | J-04 C-07 | vitest | local | VERIFIED | integrating agent | ops app isolated |
 | OPS-003 | 10_ M | Paging alerts have owner/runbook | docs/runbooks/* | L-05 | docs | local | VERIFIED | integrating agent | |
 | OPS-004 | 10_ M | Immutable audit for privileged/financial | insertAudit on refund/payout/adjustment | C-08 F-02 G-08 | vitest | local | VERIFIED | integrating agent | |
-| OPS-005 | 10_ M | Ops case views and RBAC | apps/ops, assertOpsRole, opsCaseDto | G-07 G-11 | vitest+e2e | local | VERIFIED | integrating agent | |
+| OPS-005 | 10_ M | Ops case views and RBAC | apps/ops cases page; `/api/ops/hold`; assertOpsRole | G-07 G-11; tests/e2e/core-pages.spec.ts | vitest+e2e | local | VERIFIED | integrating agent | isolated origin :3001; session cookie paid_ops_session |
 | OPS-006 | 10_ M | Support auth never uses order code | AUTH-008 | G-04 e2e ops sign-in | playwright | local | VERIFIED | integrating agent | |
 | OPS-007 | 10_ M | Privacy-safe email templates + bounce | email-core, email-mock, J-07 | J-06 J-07 | vitest+sim | local | VERIFIED | integrating agent | |
 | OPS-008 | 10_ M | Kill switches tested | KILL_SWITCHES, L-02 | L-02 F-06 | vitest | local | VERIFIED | integrating agent | |
 | OPS-009 | 10_ M | Legal/IP/child-safety/privacy/sanctions cases | routeReport RESTRICTED, G-10 | D-06 D-07 G-10 | vitest | local | VERIFIED | integrating agent | |
-| REL-007 | 10_ N | Migration from previous schema + rollback | 0001_init.sql, docs/runbooks/migration.md | L-11 tests/migrations.test.ts | vitest | local | NOT_APPLICABLE | integrating agent | V1 first schema only; no previous supported schema to upgrade. Fresh migrate is tested. Rollback procedure is in the migration runbook |
+| REL-007 | 10_ N | Migration from previous schema + rollback | 0001_init.sql, 0002_auth_outbox.sql, docs/runbooks/migration.md | L-11 tests/migrations.test.ts | vitest | local | VERIFIED | integrating agent | 0002 is additive (auth_tokens, sessions unique hash, outbox.side_effect_at). Rollback procedure remains in the migration runbook |
 | REL-008 | 10_ N | Backfills resumable/idempotent | n/a — no V1 backfill jobs | n/a | n/a | local | NOT_APPLICABLE | integrating agent | No historical backfill in first schema; outbox jobs are already idempotent (J-01/J-08) |
 | REL-009 | 10_ N | SBOM/provenance/release dossier | scripts/sbom.mjs, docs/evidence/* | L-13 L-14 | docs/evidence | local | VERIFIED | integrating agent | |
 | REL-010 | 10_ N | Env separation + typed config | packages/config env.ts fail-closed | L-01 | vitest | local | VERIFIED | integrating agent | |

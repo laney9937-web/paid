@@ -1,14 +1,19 @@
-import { createLogger } from '@paid/observability';
+import { assertBootAllowed, loadConfig } from '@paid/config';
+import { createPostgresOutboxRuntime, databaseHealth, loadLocalEnv } from '@paid/db';
 import { createEmailMock } from '@paid/email-mock';
+import { createLogger, startOtel } from '@paid/observability';
 import { processOutbox } from './processor';
-import { getWorkerStore } from './store';
 
 const log = createLogger('worker');
 
 export async function runOnce(): Promise<number> {
-  const uow = getWorkerStore();
+  loadLocalEnv();
+  startOtel('paid-worker');
+  const config = loadConfig();
+  const health = await databaseHealth();
+  assertBootAllowed(config, health);
   const email = createEmailMock();
-  return processOutbox(uow, email.adapter, log);
+  return processOutbox(createPostgresOutboxRuntime(), email.adapter, log);
 }
 
 if (

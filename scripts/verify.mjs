@@ -39,6 +39,7 @@ if (nodeMajor !== 24) {
   process.exit(1);
 }
 
+run('seed', 'pnpm', ['db:seed']);
 run('format', 'pnpm', ['exec', 'prettier', '--check', '.']);
 run('lint', 'pnpm', ['lint']);
 run('typecheck', 'pnpm', ['typecheck']);

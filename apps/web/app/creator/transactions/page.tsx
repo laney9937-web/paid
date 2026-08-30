@@ -2,9 +2,19 @@ import Link from 'next/link';
 import { formatUsd } from '@paid/contracts';
 import { CreatorNav } from '../../nav';
 import { withStore } from '../../../src/server/store';
+import { optionalCreatorSession } from '../../../src/server/session';
 
 export default async function TransactionsPage() {
-  const txs = await withStore((uow) => uow.listTransactionsByCreator('creator_maya'));
+  const session = await optionalCreatorSession();
+  if (!session?.creatorId) {
+    return (
+      <main className="page">
+        <h1>Transactions</h1>
+        <p className="empty">Sign in to see your transactions.</p>
+      </main>
+    );
+  }
+  const txs = await withStore((uow) => uow.listTransactionsByCreator(session.creatorId!));
   return (
     <main className="page">
       <h1>Transactions</h1>

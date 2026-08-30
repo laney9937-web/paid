@@ -24,4 +24,13 @@ describe('SQL migrations', () => {
     expect(sql).toContain('digest_hex text NOT NULL UNIQUE');
     expect(sql).toContain('UNIQUE (provider, provider_event_id)');
   });
+
+  it('adds hashed auth tokens and outbox side-effect column', () => {
+    const sql2 = readFileSync(
+      new URL('../packages/db/src/migrations/0002_auth_outbox.sql', import.meta.url),
+      'utf8',
+    );
+    expect(sql2).toContain('auth_tokens');
+    expect(sql2).toContain('side_effect_at');
+  });
 });

@@ -139,7 +139,7 @@ export type GuestCredentialRecord = {
   transactionId: string;
   digestHex: string;
   keyVersion: string;
-  purpose: 'ACCESS' | 'STEP_UP' | 'MAGIC_LINK' | 'EMAIL_CHANGE' | 'RECOVERY';
+  purpose: 'ACCESS' | 'SESSION' | 'STEP_UP' | 'MAGIC_LINK' | 'EMAIL_CHANGE' | 'RECOVERY';
   expiresAt: Date;
   consumedAt: Date | null;
   revokedAt: Date | null;
@@ -177,6 +177,7 @@ export type OutboxRecord = {
   maxAttempts: number;
   state: 'PENDING' | 'LEASED' | 'COMPLETED' | 'DEAD_LETTER';
   lastError?: string;
+  sideEffectAt?: Date | null;
 };
 
 export type DisputeRecord = {

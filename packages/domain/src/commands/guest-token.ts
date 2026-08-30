@@ -1,5 +1,6 @@
 import {
   AppError,
+  generateSecretToken,
   hmacToken,
   lookupTokenDigest,
   type ActorContext,
@@ -20,16 +21,13 @@ export async function peekGuestToken(
   if (cred.consumedAt)
     return { valid: false, expired: false, consumed: true, transactionId: cred.transactionId };
   if (cred.expiresAt <= now) return { valid: false, expired: true, consumed: false };
-  if (!cred.continuationIssuedAt) {
-    await uow.updateGuestCredential({ ...cred, continuationIssuedAt: now });
-  }
   return { valid: true, expired: false, consumed: false, transactionId: cred.transactionId };
 }
 
 export async function exchangeGuestToken(
   uow: UnitOfWork,
   input: { actor: ActorContext; token: string },
-): Promise<{ transactionId: string; publicOrderCode: string }> {
+): Promise<{ transactionId: string; publicOrderCode: string; sessionToken: string }> {
   const cred = await findCredential(uow, tokenFrom(input.token));
   if (!cred) throw new AppError('UNAUTHENTICATED', 'This access link is not valid');
   const now = uow.clock.now();
@@ -38,10 +36,26 @@ export async function exchangeGuestToken(
     throw new AppError('UNAUTHENTICATED', 'This access link was already used');
   }
   if (cred.expiresAt <= now) throw new AppError('UNAUTHENTICATED', 'This access link has expired');
+  if (cred.purpose !== 'ACCESS') {
+    throw new AppError('UNAUTHENTICATED', 'This access link is not valid');
+  }
   const updated: GuestCredentialRecord = { ...cred, consumedAt: now };
   await uow.updateGuestCredential(updated);
   const tx = await uow.getTransaction(cred.transactionId);
   if (!tx) throw new AppError('NOT_FOUND', 'Transaction not found');
+  const sessionToken = generateSecretToken();
+  const digest = hmacToken(uow.config.tokenKeyring, sessionToken);
+  await uow.insertGuestCredential({
+    id: newId(),
+    transactionId: tx.id,
+    digestHex: digest.digestHex,
+    keyVersion: digest.keyVersion,
+    purpose: 'SESSION',
+    expiresAt: new Date(now.getTime() + 7 * 86400 * 1000),
+    consumedAt: null,
+    revokedAt: null,
+    continuationIssuedAt: now,
+  });
   await uow.insertAudit({
     id: newId(),
     actor: {
@@ -55,7 +69,7 @@ export async function exchangeGuestToken(
     subjectId: tx.id,
     createdAt: now,
   });
-  return { transactionId: tx.id, publicOrderCode: tx.publicOrderCode };
+  return { transactionId: tx.id, publicOrderCode: tx.publicOrderCode, sessionToken };
 }
 
 function tokenFrom(token: string): string {
@@ -71,6 +85,19 @@ export async function revokeGuestToken(uow: UnitOfWork, token: string): Promise<
   const cred = await findCredential(uow, tokenFrom(token));
   if (!cred) throw new AppError('NOT_FOUND', 'Token not found');
   await uow.updateGuestCredential({ ...cred, revokedAt: uow.clock.now() });
+}
+
+export async function resolveGuestSession(
+  uow: UnitOfWork,
+  sessionToken: string | undefined | null,
+): Promise<{ transactionId: string } | null> {
+  if (!sessionToken) return null;
+  const cred = await findCredential(uow, tokenFrom(sessionToken));
+  if (!cred || cred.purpose !== 'SESSION') return null;
+  const now = uow.clock.now();
+  if (cred.revokedAt || cred.consumedAt) return null;
+  if (cred.expiresAt <= now) return null;
+  return { transactionId: cred.transactionId };
 }
 
 export function digestToken(keyring: TokenKeyring, token: string) {

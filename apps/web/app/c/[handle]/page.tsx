@@ -10,26 +10,38 @@ export default async function CreatorTrustPage({
 }) {
   const { handle } = await params;
   await ensureDemoLink();
-  const { creator, active } = await withStore(async (uow) => {
+  const { creator, active, trust } = await withStore(async (uow) => {
     const found = await uow.getCreatorByHandle(handle);
-    if (!found) return { creator: null, active: null };
+    if (!found) return { creator: null, active: null, trust: null };
     const links = await uow.listLinksByCreator(found.id);
-    return { creator: found, active: links.find((l) => l.state === 'ACTIVE') ?? null };
+    const reviews = await uow.listReviewsByCreator(found.id);
+    const eligible = reviews.filter((r) => r.includedInAggregate && r.rating);
+    const completedCount = await uow.countCapturedByCreator(found.id);
+    const tenureDays = Math.max(
+      0,
+      Math.floor((Date.now() - found.memberSince.getTime()) / 86400000),
+    );
+    return {
+      creator: found,
+      active: links.find((l) => l.state === 'ACTIVE') ?? null,
+      trust: computeTrust({
+        eligibleReviews: eligible.length,
+        ratingSum: eligible.reduce((sum, r) => sum + (r.rating ?? 0), 0),
+        uniqueBuyers: completedCount,
+        completedCount,
+        tenureDays,
+        integrityFlags: found.restricted ? 1 : 0,
+      }),
+    };
   });
-  if (!creator) notFound();
-  const trust = computeTrust({
-    eligibleReviews: 24,
-    ratingSum: 114,
-    uniqueBuyers: 22,
-    completedCount: 55,
-    tenureDays: 220,
-    integrityFlags: 0,
-  });
+  if (!creator || !trust) notFound();
   return (
     <main className="page">
       <div className="topbar">
         <div className="brand">Paid</div>
-        <span className="badge">HIGH TRUST</span>
+        <span className="badge" data-testid="trust-tier">
+          {trust.tier} TRUST
+        </span>
       </div>
       <h1>{creator.displayName} ✓</h1>
       <p className="meta">

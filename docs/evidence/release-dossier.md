@@ -1,8 +1,8 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `ca015b2dc59751f82c336bce4fa2c7a1a113af9c` (clean-checkout `pnpm verify` twice)  
+**Commit:** working tree on `main` (HEAD `8dadc5504bdd592485f0bb86c4e6d302b26ec025` plus uncommitted HTTP/worker wiring). `pnpm verify` → `VERIFY_OK`.  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
-**Schema/migration version:** `0001_init`  
+**Schema/migration version:** `0001_init` + `0002_auth_outbox`  
 **Dependency lock digest:** `docs/evidence/sbom.json`  
 **Build mode:** `PROVIDER_AGNOSTIC`  
 **Prepared by:** Integrating agent  
@@ -10,7 +10,7 @@
 
 ## 1. What was built
 
-Provider-agnostic V1 of Paid: creator links, guest scanner-safe checkout, mock payments, double-entry ledger, outbox worker, isolated ops app, trust/risk engines, T&S routing, fail-closed config, and `pnpm verify`.
+Provider-agnostic V1 of Paid: creator links gated on hashed creator sessions, guest scanner-safe checkout (GET peek / POST exchange / HttpOnly guest cookie), signed mock capture (never public order code), public trust from real aggregates, double-entry ledger, Postgres outbox lease/ack worker, isolated ops app with hold mutation, trust/risk engines, T&S routing, fail-closed boot + OTel, and `pnpm verify`.
 
 ## 2. Architecture and key decisions
 
@@ -51,7 +51,7 @@ Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABAS
 | Security SEC-001–009 | 9/9 | headers + static + adversarial | VERIFIED | SEC-010 N/A → LIVE-010 |
 | UX/ACC/PERF | see N/A | playwright + load-smoke | VERIFIED except ACC-002, UX-006 N/A | Chromium |
 | Ops OPS-* | 9/9 | worker + runbooks + RBAC | VERIFIED | |
-| Release REL-007–014 | mixed | migrations + dossier | REL-007/008/011/014 N/A | first schema / no live host |
+| Release REL-007–014 | mixed | migrations + dossier | REL-008/011/014 N/A; REL-007 VERIFIED | 0002 additive upgrade; no live host |
 | LIVE-* | 0 self-approved | docs/SPEC_GAPS.md | BLOCKED_EXTERNAL | |
 
 Catalog: `docs/evidence/acceptance-test-results.md` (unique 11_ IDs). Traceability: `docs/traceability.md`.
@@ -80,12 +80,14 @@ Every non-LIVE `10_RELEASE_ACCEPTANCE_MATRIX.md` row is `VERIFIED` or `NOT_APPLI
 
 - WebKit/Firefox/installed-PWA and dedicated screen-reader sessions remain operator evidence before live.
 - PITR restore drill requires a provisioned host.
-- Better Auth passkey enrollment is library-pinned; browser ceremony against a real authenticator is operator evidence.
+- Better Auth passkey enrollment is library-pinned; browser ceremony against a real authenticator is operator evidence. Better Auth 1.7.2 has no magic-link plugin; hashed magic links are first-party.
+- Next 16 hydration requires CSP `script-src 'unsafe-inline'`; no third-party checkout JS is shipped.
+- `next start` uses `NODE_ENV=production`; live-money fail-closed gates key off `PAID_ENV` / `PAID_BUILD_MODE`.
 - Adult live lane, real processors, and legal policies remain BLOCKED_EXTERNAL.
 
 ## 11. Changed files and migrations
 
-Primary schema: `packages/db/src/migrations/0001_init.sql` (only supported migration). Domain additions this pass: reservation release, payout destination/recovery, manual adjustment, T&S routing, legal-hold planner, checkout return allowlist, provider outage outcome, chargeback/payout journals, guest token revoke. Tests: `tests/acceptance-matrix.test.ts`, `tests/static-invariants.test.ts`, `tests/e2e/ux-quality.spec.ts`.
+Schema: `0001_init.sql` plus additive `0002_auth_outbox.sql` (`auth_tokens`, unique session token hash, `outbox_jobs.side_effect_at`). HTTP this pass: creator session-gated link create, magic-link issue/consume, guest confirm/dispute/review, mock signed capture, creator deliver/cancel/payouts (payouts fail-closed to step-up), ops hold. Worker: Postgres `FOR UPDATE SKIP LOCKED` lease + skip-send when `side_effect_at` set. Tests: `tests/pg-outbox.test.ts`, Playwright 11 Chromium, fail-closed `NODE_ENV=production` local mock allowed.
 
 ## Final status
 

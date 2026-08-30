@@ -6,7 +6,9 @@ test('public creator trust page renders product surface', async ({ page }) => {
   page.on('pageerror', (err) => errors.push(err.message));
   await page.goto('/c/maya');
   await expect(page.getByRole('heading', { name: /Maya/i })).toBeVisible();
-  await expect(page.getByText(/HIGH TRUST/i)).toBeVisible();
+  await expect(page.getByTestId('trust-tier')).toHaveText(
+    /^(BUILDING|ESTABLISHED|HIGH|EXCEPTIONAL) TRUST$/,
+  );
   await expect(page.getByText(/Pay Maya/i)).toBeVisible();
   expect(errors).toEqual([]);
   const results = await new AxeBuilder({ page }).analyze();

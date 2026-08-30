@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { addCreatorSessionCookie } from './session';
 
 test('guest GET prefetch does not consume, POST exchanges, mock pay, no double-submit', async ({
   page,
+  context,
   request,
 }) => {
+  await addCreatorSessionCookie(context);
   await page.goto('/creator/create');
   await page.getByTestId('link-amount').fill('35.00');
   await page.getByTestId('create-link').click();

@@ -1,10 +1,10 @@
 {
   "bomFormat": "Paid-SBOM",
   "specVersion": "1.0",
-  "created": "2026-08-30T00:29:21.720Z",
+  "created": "2026-08-30T01:27:28.306Z",
   "node": "v24.19.0",
   "packageManager": "pnpm@10.15.1",
-  "lockfileSha256": "81a6534a8a0eae4e60a037ddc39fa0f0616bfdf558143180d60b381dcf2081e2",
+  "lockfileSha256": "8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78",
   "components": [
     "next@16.3.3",
     "react@19.2.8",

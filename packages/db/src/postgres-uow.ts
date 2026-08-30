@@ -741,6 +741,49 @@ export class PostgresUnitOfWork implements UnitOfWork {
     `;
   }
 
+  async listReviewsByCreator(creatorId: string) {
+    const rows = await this.sql`SELECT * FROM reviews WHERE creator_id = ${creatorId}`;
+    return rows.map((raw) => {
+      const row = raw as Record<string, unknown>;
+      return {
+        id: String(row.id),
+        transactionId: String(row.transaction_id),
+        creatorId: String(row.creator_id),
+        state: row.state as ReviewRecord['state'],
+        rating: row.rating == null ? null : Number(row.rating),
+        body: row.body == null ? null : String(row.body),
+        includedInAggregate: Boolean(row.included_in_aggregate),
+        createdAt: asDate(row.created_at),
+      } satisfies ReviewRecord;
+    });
+  }
+  async countCapturedByCreator(creatorId: string) {
+    const rows = await this.sql`
+      SELECT count(*)::int AS n FROM transactions
+      WHERE creator_id = ${creatorId} AND payment_state = 'CAPTURED'
+    `;
+    return Number((rows[0] as { n: number }).n);
+  }
+  async listAuditsByAction(action: string) {
+    const rows = await this.sql`
+      SELECT * FROM audit_events WHERE action = ${action} ORDER BY created_at DESC LIMIT 50
+    `;
+    return rows.map((raw) => {
+      const row = raw as Record<string, unknown>;
+      return {
+        id: String(row.id),
+        actor: row.actor_json as AuditRecord['actor'],
+        action: String(row.action),
+        subjectType: String(row.subject_type),
+        subjectId: String(row.subject_id),
+        beforeDigest: row.before_digest == null ? undefined : String(row.before_digest),
+        afterDigest: row.after_digest == null ? undefined : String(row.after_digest),
+        reason: row.reason == null ? undefined : String(row.reason),
+        createdAt: asDate(row.created_at),
+      } satisfies AuditRecord;
+    });
+  }
+
   async countSuccessfulPaymentsByLink(linkId: string) {
     const rows = await this.sql`
       SELECT count(*)::int AS n FROM transactions WHERE link_id = ${linkId} AND payment_state = 'CAPTURED'

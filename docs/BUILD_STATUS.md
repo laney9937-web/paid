@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `ca015b2dc59751f82c336bce4fa2c7a1a113af9c`  
+**Commit:** pending dual clean-checkout `pnpm verify` stamp  
 **Last updated:** 2026-08-29  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_VERIFIED` (non-LIVE matrix rows `VERIFIED` or justified `NOT_APPLICABLE`; all `LIVE-*` remain `BLOCKED_EXTERNAL`)
+`PROVIDER_AGNOSTIC_VERIFIED` candidate — HTTP/worker wiring is in this commit; dual clean-checkout `pnpm verify` evidence will stamp the SHA. All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 
@@ -35,7 +35,7 @@
 | E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS | 2026-08-29 |
 | Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-29 |
 | Build | web/ops/worker | PASS Next 16.3.3 | 2026-08-29 |
-| `pnpm verify` | scripts/verify.mjs twice from clean worktree | VERIFY_OK (97 unit, 11 Playwright) | 2026-08-29 |
+| `pnpm verify` | scripts/verify.mjs on this working tree | VERIFY_OK (101 unit, 11 Playwright, 16 simulator) | 2026-08-29 |
 
 ## Honest NOT_APPLICABLE (non-live)
 
@@ -44,7 +44,6 @@
 | SEC-010 | Independent pentest is LIVE-010 and cannot be self-approved |
 | ACC-002 | Dedicated screen-reader session is an operator gate; axe + keyboard focus are automated |
 | UX-006 | WebKit/Firefox/installed-PWA need operator devices; Chromium is automated |
-| REL-007 | First schema only (`0001_init`); no previous supported schema |
 | REL-008 | No V1 historical backfill jobs |
 | REL-011 | PITR restore requires a live host |
 | REL-014 | Production cutover is out of scope for PROVIDER_AGNOSTIC |

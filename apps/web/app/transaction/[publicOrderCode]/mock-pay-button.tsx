@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export function MockPayButton({ publicOrderCode }: { publicOrderCode: string }) {
+export function MockPayButton() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +14,7 @@ export function MockPayButton({ publicOrderCode }: { publicOrderCode: string }) 
       const res = await fetch('/api/mock/complete-payment', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ publicOrderCode }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         setError('Could not complete mock payment');

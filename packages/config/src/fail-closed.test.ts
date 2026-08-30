@@ -38,6 +38,20 @@ describe('fail-closed startup', () => {
     expect(collectFailClosedFindings(config, healthy)).toEqual([]);
   });
 
+  it('allows next start (NODE_ENV=production) in local PROVIDER_AGNOSTIC mock mode', () => {
+    const config = loadConfig(
+      baseEnv({
+        PAID_ENV: 'local',
+        NODE_ENV: 'production',
+        PAID_BUILD_MODE: 'PROVIDER_AGNOSTIC',
+        PROVIDER_MODE: 'mock',
+        SIMULATOR_ENABLED: 'true',
+        CHECKOUT_ENABLED: 'true',
+      }),
+    );
+    expect(collectFailClosedFindings(config, healthy)).toEqual([]);
+  });
+
   it('rejects production with mock payments enabled', () => {
     const config = loadConfig(
       baseEnv({

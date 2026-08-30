@@ -1,0 +1,142 @@
+import { createHash } from 'node:crypto';
+import {
+  AppError,
+  generateSecretToken,
+  hmacToken,
+  lookupTokenDigest,
+  type TokenKeyring,
+} from '@paid/contracts';
+import { newId } from '@paid/domain';
+import { getSql } from './client';
+
+export const LOCAL_DEV_CREATOR_SESSION = 'local-dev-creator-session-v1';
+export const LOCAL_DEV_OPS_SESSION = 'local-dev-ops-session-v1';
+export const LOCAL_DEV_MAGIC_TOKEN = 'local-dev-magic-link-token-v1';
+
+export function emailDigest(email: string): string {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+}
+
+export type SessionKind = 'CREATOR' | 'OPS';
+
+export type SessionRow = {
+  id: string;
+  userId: string;
+  creatorId: string | null;
+  kind: SessionKind;
+  expiresAt: Date;
+};
+
+export async function issueMagicLink(input: {
+  email: string;
+  keyring: TokenKeyring;
+  ttlMs: number;
+  now?: Date;
+}): Promise<{ stored: boolean; token?: string }> {
+  const sql = getSql();
+  const now = input.now ?? new Date();
+  const email = input.email.trim().toLowerCase();
+  const digest = emailDigest(email);
+  const users = await sql`SELECT id FROM users WHERE lower(email) = ${email}`;
+  if (users.length === 0) return { stored: false };
+  const userId = String((users[0] as { id: string }).id);
+  const token = generateSecretToken();
+  const hashed = hmacToken(input.keyring, token);
+  await sql`
+    INSERT INTO auth_tokens (
+      id, user_id, email_digest, digest_hex, key_version, purpose, expires_at, consumed_at, created_at
+    ) VALUES (
+      ${newId()}, ${userId}, ${digest}, ${hashed.digestHex}, ${hashed.keyVersion}, 'MAGIC_LINK',
+      ${new Date(now.getTime() + input.ttlMs)}, null, ${now}
+    )
+  `;
+  return { stored: true, token };
+}
+
+export async function consumeMagicLink(input: {
+  token: string;
+  keyring: TokenKeyring;
+  kind: SessionKind;
+  ttlMs: number;
+  now?: Date;
+}): Promise<{ sessionToken: string; userId: string; creatorId: string | null }> {
+  const sql = getSql();
+  const now = input.now ?? new Date();
+  const digests = lookupTokenDigest(input.keyring, input.token).map((d) => d.digestHex);
+  const rows = await sql`
+    SELECT * FROM auth_tokens
+    WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  if (!row) throw new AppError('UNAUTHENTICATED', 'This sign-in link is not valid');
+  if (row.consumed_at) throw new AppError('UNAUTHENTICATED', 'This sign-in link was already used');
+  const expires = new Date(String(row.expires_at));
+  if (expires <= now) throw new AppError('UNAUTHENTICATED', 'This sign-in link has expired');
+  await sql`UPDATE auth_tokens SET consumed_at = ${now} WHERE id = ${String(row.id)} AND consumed_at IS NULL`;
+  const userId = String(row.user_id);
+  let creatorId: string | null = null;
+  if (input.kind === 'CREATOR') {
+    const creators = await sql`SELECT id FROM creator_profiles WHERE user_id = ${userId}`;
+    creatorId = (creators[0] as { id: string } | undefined)?.id ?? null;
+    if (!creatorId) throw new AppError('FORBIDDEN', 'No creator profile for this account');
+  }
+  const sessionToken = generateSecretToken();
+  const sessionHash = hmacToken(input.keyring, sessionToken);
+  await sql`
+    INSERT INTO sessions (id, user_id, token_hash, kind, expires_at, created_at, rotated_at)
+    VALUES (
+      ${newId()}, ${userId}, ${sessionHash.digestHex}, ${input.kind},
+      ${new Date(now.getTime() + input.ttlMs)}, ${now}, ${now}
+    )
+  `;
+  return { sessionToken, userId, creatorId };
+}
+
+export async function lookupSession(
+  rawToken: string | undefined | null,
+  keyring: TokenKeyring,
+  kind: SessionKind,
+): Promise<SessionRow | null> {
+  if (!rawToken) return null;
+  const sql = getSql();
+  const digests = lookupTokenDigest(keyring, rawToken).map((d) => d.digestHex);
+  const rows = await sql`
+    SELECT s.id, s.user_id, s.kind, s.expires_at, c.id AS creator_id
+    FROM sessions s
+    LEFT JOIN creator_profiles c ON c.user_id = s.user_id
+    WHERE s.token_hash = ANY(${digests}) AND s.kind = ${kind}
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  const expiresAt = new Date(String(row.expires_at));
+  if (expiresAt <= new Date()) return null;
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    creatorId: row.creator_id == null ? null : String(row.creator_id),
+    kind: row.kind as SessionKind,
+    expiresAt,
+  };
+}
+
+export async function revokeUserSessions(userId: string): Promise<number> {
+  const sql = getSql();
+  const rows = await sql`DELETE FROM sessions WHERE user_id = ${userId} RETURNING id`;
+  return rows.length;
+}
+
+export async function listUserSessions(userId: string) {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, kind, expires_at, created_at FROM sessions WHERE user_id = ${userId}
+  `;
+  return rows.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    return {
+      id: String(row.id),
+      kind: String(row.kind),
+      expiresAt: new Date(String(row.expires_at)),
+      createdAt: new Date(String(row.created_at)),
+    };
+  });
+}

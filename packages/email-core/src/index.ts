@@ -2,6 +2,7 @@ export type EmailMessage = {
   toDigest: string;
   templateId: string;
   templateVersion: string;
+  idempotencyKey?: string;
   variables: Record<string, string>;
 };
 

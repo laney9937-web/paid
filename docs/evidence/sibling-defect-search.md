@@ -7,8 +7,10 @@ Searched 2026-08-29 against the shipped tree.
 | Shared cache leak | Private routes set no-store in next.config; curl showed no-store on /c/maya | tests/security + launch headers |
 | Frontend-only field hiding | DTOs constructed as allowlists; assertNoCreatorLeak | authorization/dtos.ts |
 | Order code as auth | Receipt requires guest cookie; denyOrderCodeAuth | create-checkout.test + security |
-| Bearer token plaintext/URL after exchange | HMAC digest stored; POST redirects to /transaction/CODE | guest-token.ts |
-| Redirect as payment success | Return page copy + capture only from provider event | create-checkout.test |
+| Bearer token plaintext/URL after exchange | HMAC digest stored; POST issues hashed SESSION cookie | guest-token.ts; continue/route.ts |
+| Redirect as payment success | Return page copy + capture only from signed mock webhook, never publicOrderCode | complete-payment/route.ts |
+| GET mutation of guest ACCESS token | peekGuestToken is a pure read | guest-token.ts; guest-checkout e2e |
+| Mutation 303 via Referer | assertAppPath same-app paths only | tests/security.test.ts |
 | Duplicate webhook | Inbox unique + capture no-op if already CAPTURED | simulator duplicate-webhook |
 | number/float money | money() rejects non-integers | money.test.ts |
 | Mutable balance | projections from journal | projectCreatorBalances |
@@ -22,7 +24,7 @@ Searched 2026-08-29 against the shipped tree.
 | Session replay analytics | none added | code search |
 | Support KYC | DTO/staff copy | ops pages |
 | Missing agreement version | snapshot creatorAgreementVersion | create-checkout |
-| Migration deleting history | SQL additive 0001_init | migrations.test |
+| Migration deleting history | SQL additive 0001_init + 0002_auth_outbox | migrations.test |
 | Silent recon overwrite | breaks as records | reconciliation package |
 | Unknown event ignored | ALERT_UNKNOWN_PROVIDER_EVENT | simulator |
 | No webhook size limit | 64k in webhook route | route.ts |

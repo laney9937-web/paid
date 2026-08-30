@@ -8,6 +8,11 @@ export default function OnboardingPage() {
         <li>Choose a public pseudonym</li>
       </ol>
       <p className="notice">Legal identity never appears on your public trust page.</p>
+      <form className="stack" method="post" action="/api/creator/agreements">
+        <button className="primary" type="submit" data-testid="accept-agreement">
+          Accept agreement v1
+        </button>
+      </form>
     </main>
   );
 }

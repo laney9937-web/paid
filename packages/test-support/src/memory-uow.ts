@@ -298,6 +298,18 @@ export class MemoryUnitOfWork implements UnitOfWork {
     this.reviews.set(review.transactionId, review);
   }
 
+  async listReviewsByCreator(creatorId: string) {
+    return [...this.reviews.values()].filter((r) => r.creatorId === creatorId);
+  }
+  async countCapturedByCreator(creatorId: string) {
+    return [...this.transactions.values()].filter(
+      (t) => t.creatorId === creatorId && t.paymentState === 'CAPTURED',
+    ).length;
+  }
+  async listAuditsByAction(action: string) {
+    return this.audits.filter((a) => a.action === action);
+  }
+
   async countSuccessfulPaymentsByLink(linkId: string) {
     const txs = [...this.transactions.values()].filter((t) => t.linkId === linkId);
     return txs.filter((t) => t.paymentState === 'CAPTURED').length;
