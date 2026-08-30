@@ -1,7 +1,7 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** pending SHA after magic-link delivery commit  
+**Commit:** ae1a66bb9632d5b23874f7f766b89c963b2cb79e  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
