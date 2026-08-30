@@ -11,6 +11,11 @@ blob-report
 .env
 .env.local
 .env.*.local
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
 *.log
 .vercel
 .cache
