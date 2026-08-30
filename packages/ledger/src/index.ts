@@ -5,6 +5,7 @@ export {
   payoutJournal,
   payoutReserveJournal,
   payoutFailedJournal,
+  payoutReversedJournal,
   chargebackAfterPayoutJournal,
   reserveReleaseJournal,
   manualAdjustmentJournal,

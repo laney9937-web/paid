@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     '@paid/db',
     '@paid/domain',
     '@paid/observability',
+    '@paid/reconciliation',
     '@paid/ui',
   ],
   async headers() {

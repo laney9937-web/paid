@@ -208,8 +208,22 @@ describe('static product and security invariants', () => {
     expect(yml).toContain('group: paid-verify');
     expect(yml).toContain('E2E_WEB_PORT');
     expect(yml).toContain('E2E_OPS_PORT');
+    expect(yml).toContain("node-version: '24.19.0'");
+    expect(yml).toContain('10.15.1');
+    expect(yml).toContain('upload-artifact');
     const pw = read('playwright.config.ts');
     expect(pw).toContain("process.env.CI ? '3100'");
     expect(pw).toContain('workers: process.env.CI ? 1');
+  });
+
+  it('PayForm does not post client geo and public pages gate the verification mark', () => {
+    expect(read('apps/web/app/t/[shareId]/pay-form.tsx')).not.toContain('buyerJurisdiction');
+    expect(read('apps/web/app/api/transactions/checkout-sessions/route.ts')).toContain(
+      'checkoutBodySchema',
+    );
+    const profile = read('apps/web/app/c/[handle]/page.tsx');
+    expect(profile).toContain('publicTrustPresentation');
+    expect(profile).not.toContain('Identity privately verified');
+    expect(profile).not.toContain('{trust.tier} TRUST');
   });
 });

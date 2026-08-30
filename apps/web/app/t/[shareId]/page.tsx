@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { formatUsd } from '@paid/contracts';
 import { deliveryLabel, quoteFees } from '@paid/domain';
-import { computeTrust } from '@paid/trust';
+import { computeTrust, publicTrustPresentation } from '@paid/trust';
 import { withStore } from '../../../src/server/store';
 import { PayForm } from './pay-form';
 
@@ -36,12 +36,23 @@ export default async function TransactionLinkPage({
   });
   if (!data?.link || !data.creator) notFound();
   const { link, creator, trust, fees } = data;
+  const presentation = publicTrustPresentation(creator.identityState, trust);
   return (
     <main className="page">
       <div className="topbar">
         <div>
-          <div className="brand">{creator.displayName} ✓</div>
-          <div className="kicker">{trust.tier} TRUST</div>
+          <div className="brand">
+            {creator.displayName}
+            {presentation.identityVerified ? (
+              <span data-testid="identity-mark" aria-label="Identity verified">
+                {' '}
+                ✓
+              </span>
+            ) : null}
+          </div>
+          <div className="kicker" data-testid="trust-tier">
+            {presentation.trustLabel}
+          </div>
         </div>
         <span className="badge">PROTECTED</span>
       </div>

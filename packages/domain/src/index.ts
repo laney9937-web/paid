@@ -19,6 +19,7 @@ export * from './commands/provider-inbox';
 export * from './commands/account';
 export * from './commands/payout';
 export * from './commands/adjustment';
+export * from './commands/ops-actions';
 export * from './privacy';
 export * from './tns';
 export * from './checkout-return';

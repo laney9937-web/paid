@@ -23,7 +23,11 @@ import type {
   UnitOfWork,
 } from '@paid/domain';
 import { ACCOUNT, NONTERMINAL_RESERVATIONS, defaultRestrictedKeyring } from '@paid/domain';
-import type { CanonicalProviderEvent, ProviderEventOutcome } from '@paid/contracts';
+import {
+  isTerminalProviderOutcome,
+  type CanonicalProviderEvent,
+  type ProviderEventOutcome,
+} from '@paid/contracts';
 
 function occ(current: { version: number } | undefined, nextVersion: number): void {
   if (!current) throw new AppError('NOT_FOUND', 'Record not found');
@@ -113,9 +117,19 @@ export class MemoryInbox implements InboxStore {
     const key = `${provider}:${providerEventId}`;
     const row = this.rows.get(key);
     if (row) {
-      row.processed = true;
+      row.processed = isTerminalProviderOutcome(outcome);
       row.outcome = outcome;
     }
+  }
+
+  async listUnprocessed() {
+    return [...this.rows.values()]
+      .filter((row) => !row.processed)
+      .map((row) => ({
+        provider: row.event.provider,
+        providerEventId: row.event.providerEventId,
+        event: row.event,
+      }));
   }
 }
 
@@ -257,6 +271,9 @@ export class MemoryUnitOfWork implements UnitOfWork {
   }
   async getPaymentByTransaction(transactionId: string) {
     return [...this.payments.values()].find((p) => p.transactionId === transactionId) ?? null;
+  }
+  async lockPaymentByTransaction(transactionId: string) {
+    return this.getPaymentByTransaction(transactionId);
   }
   async updatePayment(payment: PaymentRecord) {
     occ(this.payments.get(payment.id), payment.version);

@@ -24,6 +24,16 @@ export default async function OutboxPage({
       {list.rows.map((row) => (
         <div className="card" key={row.id}>
           {row.type} · {row.state} · attempts {row.attemptCount}
+          {row.state === 'DEAD_LETTER' ? (
+            <form method="post" action="/api/ops/outbox/retry">
+              <input type="hidden" name="jobId" value={row.id} />
+              <input type="hidden" name="reason" value="dead-letter-retry" />
+              <input type="hidden" name="idempotencyKey" value={`outbox-${row.id}`} />
+              <button type="submit" data-testid="ops-outbox-retry">
+                Retry
+              </button>
+            </form>
+          ) : null}
         </div>
       ))}
       {list.rows.length === 0 ? <p>No outbox jobs.</p> : null}

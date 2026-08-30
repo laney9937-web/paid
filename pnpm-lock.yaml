@@ -135,6 +135,9 @@ importers:
       '@paid/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@paid/reconciliation':
+        specifier: workspace:*
+        version: link:../../packages/reconciliation
       '@paid/ui':
         specifier: workspace:*
         version: link:../../packages/ui

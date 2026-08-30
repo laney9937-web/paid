@@ -20,6 +20,14 @@ export default async function OpsRisk() {
         <form key={String(row.id)} method="post" action="/api/ops/hold" className="card">
           <input type="hidden" name="creatorId" value={String(row.id)} />
           {String(row.handle)} · hold {String(row.payoutHold)}
+          <label>
+            Reason
+            <input name="reason" required minLength={3} defaultValue="risk-hold" />
+          </label>
+          <label>
+            Idempotency key
+            <input name="idempotencyKey" required minLength={8} defaultValue={`hold-${row.id}`} />
+          </label>
           <button type="submit" data-testid="ops-hold">
             Hold payouts
           </button>

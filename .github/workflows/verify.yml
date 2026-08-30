@@ -21,10 +21,10 @@ concurrency:
 
 jobs:
   verify:
-    # GitHub-hosted ubuntu-latest is preferred. This account is currently
-    # billing-locked ("job was not started because your account is locked due
-    # to a billing issue"), so the job runs on a registered Linux self-hosted
-    # runner until hosted minutes are unlocked.
+    # GitHub-hosted ubuntu-latest + a postgres:18 service is preferred. This
+    # account is billing-locked and the self-hosted runner has no docker.sock,
+    # so we pin Node/pnpm here and verify host PostgreSQL 18 instead of a
+    # GitHub service container.
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
     env:
@@ -35,6 +35,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
       - name: Free isolated e2e ports
         run: |
           for p in 3100 3101; do
@@ -51,6 +59,8 @@ jobs:
           pnpm -v
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Confirm PostgreSQL 18
+        run: node scripts/pg-version.mjs
       - name: Env
         run: cp .env.example .env
       - name: Migrate and seed
@@ -63,3 +73,14 @@ jobs:
         run: pnpm verify
       - name: SBOM
         run: pnpm sbom
+      - name: Upload reports
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-evidence
+          if-no-files-found: warn
+          path: |
+            docs/evidence/sbom.json
+            playwright-report
+            test-results
