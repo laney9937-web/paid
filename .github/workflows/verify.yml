@@ -19,32 +19,22 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # GitHub-hosted ubuntu-latest is preferred. This account is currently
+    # billing-locked ("job was not started because your account is locked due
+    # to a billing issue"), so the job runs on a registered Linux self-hosted
+    # runner until hosted minutes are unlocked.
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: paid
-          POSTGRES_PASSWORD: paid_local_only
-          POSTGRES_DB: paid
-        ports:
-          - 5432:5432
-        options: --health-cmd "pg_isready -U paid -d paid" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       CI: "true"
+      DATABASE_URL: postgres://paid:paid_local_only@127.0.0.1:5432/paid
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.1
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: pnpm
+      - name: Show toolchain
+        run: |
+          node -v
+          pnpm -v
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Env
@@ -52,10 +42,20 @@ jobs:
       - name: Migrate and seed
         run: pnpm db:migrate && pnpm db:seed
       - name: Playwright browser
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install chromium
       - name: Secret scan
         run: node scripts/secret-scan.mjs
       - name: Verify
         run: pnpm verify
       - name: SBOM
         run: pnpm sbom
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-evidence
+          path: |
+            docs/evidence/sbom.json
+            playwright-report/**
+            test-results/**
+          if-no-files-found: ignore
