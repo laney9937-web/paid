@@ -67,6 +67,12 @@ async function findCredential(uow: UnitOfWork, token: string) {
   return uow.findGuestCredentialByDigests(digests);
 }
 
+export async function revokeGuestToken(uow: UnitOfWork, token: string): Promise<void> {
+  const cred = await findCredential(uow, tokenFrom(token));
+  if (!cred) throw new AppError('NOT_FOUND', 'Token not found');
+  await uow.updateGuestCredential({ ...cred, revokedAt: uow.clock.now() });
+}
+
 export function digestToken(keyring: TokenKeyring, token: string) {
   return hmacToken(keyring, token);
 }

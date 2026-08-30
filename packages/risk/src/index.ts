@@ -44,3 +44,47 @@ export function assertNoProhibitedFeatures(featureNames: string[]): void {
     }
   }
 }
+
+export type RiskOverride = {
+  subjectId: string;
+  reason: string;
+  actorId: string;
+  expiresAt: Date;
+  createdAt: Date;
+  ruleVersion: string;
+};
+
+export function recordRiskOverride(input: {
+  actorType: string;
+  actorId?: string;
+  opsRoles?: readonly string[];
+  authStrength: string;
+  subjectId: string;
+  reason: string;
+  expiresAt: Date;
+  now: Date;
+}): RiskOverride {
+  if (input.actorType !== 'OPS' || !input.opsRoles?.includes('RISK')) {
+    throw new Error('Risk override requires the RISK operator role');
+  }
+  if (input.authStrength !== 'STEP_UP' && input.authStrength !== 'PASSKEY') {
+    throw new Error('Risk override requires fresh authentication');
+  }
+  if (input.reason.trim().length < 8) {
+    throw new Error('Risk override requires a reason');
+  }
+  if (input.expiresAt <= input.now) {
+    throw new Error('Risk override requires a future expiry');
+  }
+  if (!input.actorId) {
+    throw new Error('Risk override requires an actor');
+  }
+  return {
+    subjectId: input.subjectId,
+    reason: input.reason.trim(),
+    actorId: input.actorId,
+    expiresAt: input.expiresAt,
+    createdAt: input.now,
+    ruleVersion: 'risk.override.v1',
+  };
+}

@@ -17,6 +17,7 @@ export default defineConfig({
       timeout: 120000,
       env: {
         ...process.env,
+        NODE_ENV: 'production',
         DATABASE_URL: databaseUrl,
         TOKEN_HMAC_KEY_V1:
           process.env.TOKEN_HMAC_KEY_V1 ?? 'local-dev-token-hmac-key-v1-32bytes-min',
@@ -31,6 +32,7 @@ export default defineConfig({
       timeout: 120000,
       env: {
         ...process.env,
+        NODE_ENV: 'production',
         NEXT_TELEMETRY_DISABLED: '1',
       },
     },

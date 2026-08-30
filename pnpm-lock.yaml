@@ -363,6 +363,9 @@ importers:
       '@paid/domain':
         specifier: workspace:*
         version: link:../domain
+      '@paid/email-mock':
+        specifier: workspace:*
+        version: link:../email-mock
       '@paid/payments-mock':
         specifier: workspace:*
         version: link:../payments-mock

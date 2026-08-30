@@ -21,7 +21,7 @@ export default async function CreatorTrustPage({
     eligibleReviews: 24,
     ratingSum: 114,
     uniqueBuyers: 22,
-    completedCount: 40,
+    completedCount: 55,
     tenureDays: 220,
     integrityFlags: 0,
   });

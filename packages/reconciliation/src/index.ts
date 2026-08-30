@@ -41,6 +41,10 @@ export function runReconciliation(input: {
   providerRefunds: number;
   internalPayouts: number;
   providerPayouts: number;
+  internalFees?: number;
+  providerFees?: number;
+  internalReserves?: number;
+  providerReserves?: number;
   source: unknown;
 }): ReconciliationBreak[] {
   const sourceHash = hashSource(input.source);
@@ -48,5 +52,12 @@ export function runReconciliation(input: {
     ...diffCounts(input.internalCaptures, input.providerCaptures, 'MISSING_CAPTURE', sourceHash),
     ...diffCounts(input.internalRefunds, input.providerRefunds, 'MISSING_REFUND', sourceHash),
     ...diffCounts(input.internalPayouts, input.providerPayouts, 'MISSING_PAYOUT', sourceHash),
+    ...diffCounts(input.internalFees ?? 0, input.providerFees ?? 0, 'MISSING_FEE', sourceHash),
+    ...diffCounts(
+      input.internalReserves ?? 0,
+      input.providerReserves ?? 0,
+      'MISSING_RESERVE',
+      sourceHash,
+    ),
   ];
 }

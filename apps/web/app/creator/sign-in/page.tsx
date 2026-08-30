@@ -1,10 +1,18 @@
 import Link from 'next/link';
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <main className="page">
       <div className="brand">Paid</div>
       <h1>Sign in</h1>
+      {params.sent ? (
+        <p className="notice">If an account exists for that email, we sent a sign-in link.</p>
+      ) : null}
       <form className="stack" method="post" action="/api/creator/magic-link">
         <div className="field">
           <label htmlFor="email">Email</label>

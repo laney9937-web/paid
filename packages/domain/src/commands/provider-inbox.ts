@@ -4,8 +4,12 @@ import {
   type ActorContext,
   type CanonicalProviderEvent,
 } from '@paid/contracts';
-import { capturePaymentFromProvider, failCheckout } from './apply-payment';
-import { chargebackAfterPayoutJournal } from '../ledger-postings';
+import {
+  authorizePaymentFromProvider,
+  capturePaymentFromProvider,
+  failCheckout,
+} from './apply-payment';
+import { chargebackAfterPayoutJournal, payoutJournal } from '../ledger-postings';
 import { newId } from '../uuid';
 import type { UnitOfWork } from '../ports';
 
@@ -83,6 +87,10 @@ export async function processCanonicalProviderEvent(
     return { duplicate: false, applied: false, unknown: true };
   }
 
+  if (input.event.eventType === 'PAYMENT_AUTHORIZED' && input.transactionId) {
+    await authorizePaymentFromProvider(uow, { transactionId: input.transactionId });
+    return { duplicate: false, applied: true, unknown: false };
+  }
   if (input.event.eventType === 'PAYMENT_CAPTURED' && input.transactionId) {
     await capturePaymentFromProvider(uow, {
       actor: input.actor,
@@ -109,6 +117,35 @@ export async function processCanonicalProviderEvent(
         }),
       );
     }
+    return { duplicate: false, applied: true, unknown: false };
+  }
+  if (input.event.eventType === 'PAYOUT_PAID' && input.event.amount) {
+    const creatorId =
+      (input.event.normalizedData as { creatorId?: string } | undefined)?.creatorId ??
+      (input.transactionId
+        ? (await uow.getTransaction(input.transactionId))?.creatorId
+        : undefined);
+    if (creatorId) {
+      await uow.appendJournal(
+        payoutJournal({
+          payoutId: input.event.providerResourceId,
+          creatorId,
+          amount: fromWire(input.event.amount),
+          occurredAt: new Date(input.event.occurredAt),
+        }),
+      );
+    }
+    return { duplicate: false, applied: true, unknown: false };
+  }
+  if (input.event.eventType === 'PAYOUT_FAILED') {
+    await uow.insertAudit({
+      id: newId(),
+      actor: input.actor,
+      action: 'PAYOUT_FAILED',
+      subjectType: 'payout',
+      subjectId: input.event.providerResourceId,
+      createdAt: uow.clock.now(),
+    });
     return { duplicate: false, applied: true, unknown: false };
   }
   return { duplicate: false, applied: true, unknown: false };

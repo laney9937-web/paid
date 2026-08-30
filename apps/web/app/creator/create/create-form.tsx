@@ -7,6 +7,7 @@ export function CreateForm() {
   const [error, setError] = useState<string | null>(null);
   const [sharePath, setSharePath] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [amount, setAmount] = useState('50.00');
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,7 +20,7 @@ export function CreateForm() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          amount: String(form.get('amount') ?? ''),
+          amount,
           category: String(form.get('category') ?? ''),
           deliveryDuration: String(form.get('deadline') ?? ''),
         }),
@@ -47,7 +48,8 @@ export function CreateForm() {
         <input
           id="amount"
           name="amount"
-          defaultValue="50.00"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
           inputMode="decimal"
           autoComplete="off"
           data-testid="link-amount"

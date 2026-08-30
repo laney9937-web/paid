@@ -34,6 +34,10 @@ export async function submitReview(
   if (existing) {
     throw new AppError('STATE_CONFLICT', 'This transaction already has a review');
   }
+  const payment = await uow.getPaymentByTransaction(tx.id);
+  const dispute = await uow.getDisputeByTransaction(tx.id);
+  const refunded = Boolean(payment && payment.refundedAmount.amountMinor > 0n);
+  const includedInAggregate = !refunded && !dispute;
   const now = uow.clock.now();
   await uow.insertReview({
     id: newId(),
@@ -42,7 +46,7 @@ export async function submitReview(
     state: 'PENDING_MODERATION',
     rating: input.rating,
     body,
-    includedInAggregate: true,
+    includedInAggregate,
     createdAt: now,
   });
   await uow.insertAudit({

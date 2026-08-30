@@ -48,4 +48,8 @@ test('guest GET prefetch does not consume, POST exchanges, mock pay, no double-s
   await page.getByTestId('complete-mock-payment').click();
   await expect(page.getByTestId('receipt-status')).toHaveText('Paid', { timeout: 15000 });
   await expect(page.getByTestId('order-code')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByTestId('receipt-status')).toHaveText('Paid');
+  await expect(page.getByTestId('guest-authorized')).toBeVisible();
 });

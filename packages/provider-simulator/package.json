@@ -18,7 +18,8 @@
     "@paid/domain": "workspace:*",
     "@paid/test-support": "workspace:*",
     "@paid/payments-mock": "workspace:*",
-    "@paid/compliance": "workspace:*"
+    "@paid/compliance": "workspace:*",
+    "@paid/email-mock": "workspace:*"
   },
   "devDependencies": {
     "tsx": "4.23.12"

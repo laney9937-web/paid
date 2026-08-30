@@ -196,10 +196,43 @@ export async function releaseExpiredReservation(
   const payment = await uow.getPaymentByTransaction(tx.id);
   if (!reservation || !payment) return;
   if (payment.state === 'CAPTURED') return;
+  if (reservation.state === 'EXPIRED_RELEASED' || reservation.state === 'FAILED') return;
   await uow.updateReservation({
     ...reservation,
     state: transitionReservation(reservation.state, 'RELEASE_EXPIRED'),
     version: reservation.version + 1,
+  });
+}
+
+export async function authorizePaymentFromProvider(
+  uow: UnitOfWork,
+  input: { transactionId: string },
+): Promise<void> {
+  const payment = await uow.getPaymentByTransaction(input.transactionId);
+  const tx = await uow.getTransaction(input.transactionId);
+  if (!payment || !tx) return;
+  if (payment.state === 'CAPTURED' || payment.state === 'AUTHORIZED') return;
+  const next = transitionPayment(payment.state, 'AUTHORIZE');
+  await uow.updatePayment({ ...payment, state: next, version: payment.version + 1 });
+  await uow.updateTransaction({ ...tx, paymentState: next, version: tx.version + 1 });
+}
+
+export async function applyProviderCheckoutOutcome(
+  uow: UnitOfWork,
+  transactionId: string,
+  outcome: 'FAILED' | 'UNKNOWN',
+): Promise<'FAILED' | 'UNKNOWN'> {
+  if (outcome === 'FAILED') {
+    await failCheckout(uow, transactionId);
+    return 'FAILED';
+  }
+  await markCheckoutUnknown(uow, transactionId);
+  return 'UNKNOWN';
+}
+
+export function providerOutageError(): AppError {
+  return new AppError('PROVIDER_UNAVAILABLE', 'Provider did not confirm checkout', {
+    retryable: true,
   });
 }
 

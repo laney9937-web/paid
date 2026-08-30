@@ -127,3 +127,28 @@ export function assertNoCreatorLeak(payload: unknown): void {
     }
   }
 }
+
+export function opsCaseDto(
+  role: 'SUPPORT' | 'DISPUTES' | 'RISK' | 'COMPLIANCE' | 'PAYMENTS' | 'SECURITY',
+  input: {
+    id: string;
+    category: string;
+    sla: 'RESTRICTED' | 'COMMERCIAL';
+    sanctionsRaw?: string;
+    taxRaw?: string;
+    restrictedIdentity?: string;
+    adultTransactionLinkage?: string;
+  },
+) {
+  const base = { id: input.id, category: input.category, sla: input.sla };
+  if (role === 'COMPLIANCE' || role === 'RISK' || role === 'SECURITY') {
+    return {
+      ...base,
+      sanctionsRaw: input.sanctionsRaw ?? null,
+      taxRaw: input.taxRaw ?? null,
+      restrictedIdentity: input.restrictedIdentity ?? null,
+      adultTransactionLinkage: input.adultTransactionLinkage ?? null,
+    };
+  }
+  return base;
+}

@@ -142,7 +142,12 @@ export function payoutJournal(params: {
       amount: params.amount,
       creatorId: params.creatorId,
     },
-    { accountCode: ACCOUNT.PAYOUT_CLEARING, direction: 'CREDIT', amount: params.amount },
+    {
+      accountCode: ACCOUNT.PAYOUT_CLEARING,
+      direction: 'CREDIT',
+      amount: params.amount,
+      creatorId: params.creatorId,
+    },
   ];
   balanced(lines, params.amount.currency);
   return {
