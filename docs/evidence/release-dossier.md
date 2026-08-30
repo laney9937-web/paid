@@ -1,12 +1,12 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** working tree on `main` (HEAD `8dadc5504bdd592485f0bb86c4e6d302b26ec025` plus uncommitted HTTP/worker wiring). `pnpm verify` → `VERIFY_OK`.  
+**Commit:** `68b207fee36ce5d3d26ae807921b81618029c56e` (dual clean-checkout `pnpm verify` both `VERIFY_OK`)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox`  
-**Dependency lock digest:** `docs/evidence/sbom.json`  
+**Dependency lock digest:** `docs/evidence/sbom.json` (lock `8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78`)  
 **Build mode:** `PROVIDER_AGNOSTIC`  
 **Prepared by:** Integrating agent  
-**Review date:** 2026-08-29
+**Review date:** 2026-08-30
 
 ## 1. What was built
 
@@ -27,12 +27,21 @@ nvm use 24.19.0
 pnpm install --frozen-lockfile
 pnpm db:up
 # wait until postgres is ready
+pnpm db:reset
 pnpm db:migrate
 pnpm db:seed
+pnpm verify
 pnpm verify
 ```
 
 Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABASE_URL` and `TOKEN_HMAC_KEY_V1` from `.env.example`.
+
+Clean-checkout evidence (detached worktree of `68b207f`, not the dirty primary tree):
+
+- `pnpm install --frozen-lockfile`
+- `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox`)
+- `pnpm verify` twice → both `VERIFY_OK` (101 unit, 11 Playwright, 16 simulator)
+- Live launch from that worktree: `GET /c/maya` 200 with Maya + BUILDING TRUST + Pay Maya; `GET :3001/ops/sign-in` 200 isolated staff copy; worker `processed: 3` / `worker pass complete`
 
 ## 4. Test/build results
 

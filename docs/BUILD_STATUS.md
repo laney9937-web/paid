@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** pending dual clean-checkout `pnpm verify` stamp  
-**Last updated:** 2026-08-29  
+**Commit:** `68b207fee36ce5d3d26ae807921b81618029c56e`  
+**Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_VERIFIED` candidate — HTTP/worker wiring is in this commit; dual clean-checkout `pnpm verify` evidence will stamp the SHA. All `LIVE-*` remain `BLOCKED_EXTERNAL`.
+`PROVIDER_AGNOSTIC_VERIFIED` — dual clean-checkout `pnpm verify` of committed SHA `68b207f` both printed `VERIFY_OK` (101 unit, 11 Playwright Chromium, 16 simulator). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 
@@ -28,14 +28,14 @@
 
 | Check | Command/evidence | Result | Last run |
 |---|---|---|---|
-| Frozen install | pnpm install | PASS | 2026-08-29 |
-| Format/lint/typecheck | pnpm verify | PASS | 2026-08-29 |
-| Unit/property | pnpm test / test:property | PASS (acceptance-matrix + prior suite) | 2026-08-29 |
-| Integration/contract | simulator + pg constraints + pg-uow | PASS | 2026-08-29 |
-| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS | 2026-08-29 |
-| Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-29 |
-| Build | web/ops/worker | PASS Next 16.3.3 | 2026-08-29 |
-| `pnpm verify` | scripts/verify.mjs on this working tree | VERIFY_OK (101 unit, 11 Playwright, 16 simulator) | 2026-08-29 |
+| Frozen install | `pnpm install --frozen-lockfile` in detached worktree of `68b207f` | PASS | 2026-08-30 |
+| Format/lint/typecheck | pnpm verify | PASS | 2026-08-30 |
+| Unit/property | pnpm test / test:property | PASS (101 unit; 3 property) | 2026-08-30 |
+| Integration/contract | simulator + pg constraints + pg-uow + pg-outbox | PASS | 2026-08-30 |
+| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS (11) | 2026-08-30 |
+| Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-30 |
+| Build | web/ops/worker | PASS Next 16.3.3 webpack | 2026-08-30 |
+| `pnpm verify` | detached worktree of `68b207f`: reset/migrate/seed then `pnpm verify` twice | VERIFY_OK twice | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

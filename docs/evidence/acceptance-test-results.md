@@ -125,7 +125,7 @@ Status values: `VERIFIED` | `NOT_APPLICABLE` (with rationale) | `BLOCKED_EXTERNA
 | L-11 | Fresh DB + first schema migration | unit | tests/migrations.test.ts; 0001_init.sql; 0002_auth_outbox.sql | local | PASS | vitest | VERIFIED | migrate applies sorted SQL; 0002 additive |
 | L-12 | Old/new app versions process events | unit+sim | canonical schemaVersion; unknown-valid-event | local | PASS | vitest + mock:scenario | VERIFIED | unknown retained |
 | L-13 | SBOM/dependency/secrets/build manifest | script | scripts/sbom.mjs; docs/evidence/sbom.json | local | PASS | pnpm sbom | VERIFIED | |
-| L-14 | Release artifact maps to commit + migration | docs | docs/evidence/release-dossier.md | local | PASS | dossier | VERIFIED | 0001_init + 0002_auth_outbox |
+| L-14 | Release artifact maps to commit + migration | docs | docs/evidence/release-dossier.md | local | PASS | dossier | VERIFIED | SHA `68b207f`; 0001_init + 0002_auth_outbox |
 | BRAND-01 | Customer-facing surfaces use Paid | static+e2e | tests/static-invariants.test.ts; core-pages | local | PASS | vitest + playwright | VERIFIED | |
 | BRAND-02 | Domain examples use paid.example | static | tests/static-invariants.test.ts; seed | local | PASS | vitest | VERIFIED | maya@paid.example |
 | BRAND-03 | No trademark/escrow/absolute-guarantee claims | static | tests/static-invariants.test.ts | local | PASS | vitest | VERIFIED | |
