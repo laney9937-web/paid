@@ -1,13 +1,15 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `e97f1a12240f42d2c38669e5b7c3c3b403a4af72` (`repair/auth-financial-trust-integrity`)  
+**Commit:** `7a86e58d107bf77ab16fd04fa21982236a5d9cab` (`repair/auth-financial-trust-integrity`)  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
+A git commit cannot contain its own object id. This dossier names the dual-verified, Actions-green tree. Confirm with `git merge-base --is-ancestor 7a86e58d107bf77ab16fd04fa21982236a5d9cab HEAD` and `git diff --stat 7a86e58d107bf77ab16fd04fa21982236a5d9cab HEAD` (evidence paths only).
+
 ## Overall status
 
-`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `e97f1a1` both `VERIFY_OK` (142 unit, 16 Playwright, 16 simulator). GitHub Actions of this SHA is the remaining remote gate (PR https://github.com/laney9937-web/paid/pull/2). Provider-agnostic mock boundary unchanged: no Segpay/CCBill/Verotel, no live money.
+`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `7a86e58d107bf77ab16fd04fa21982236a5d9cab` both `VERIFY_OK` (142 unit, 16 Playwright, 16 simulator). GitHub Actions run [33298797636](https://github.com/laney9937-web/paid/actions/runs/33298797636) `conclusion=success` on that SHA. Artifact upload did not persist: `Failed to CreateArtifact: Artifact storage quota has been hit`; workflow step is `continue-on-error`; `total_count=0`. SBOM remains `docs/evidence/sbom.json` in git. PR https://github.com/laney9937-web/paid/pull/2 stays open. Provider-agnostic mock boundary unchanged: no Segpay/CCBill/Verotel, no live money.
 
 ## What this repair changed
 
@@ -21,7 +23,7 @@
 - Ledger-derived balances; failed/cancelled txs do not inflate pending. MOCK fee v2: 5% creator, 3.9%+$0.49 buyer protection cap $4.99, min $20.
 - Public GET does not create demo links; production web has no `@paid/test-support`; verification mark and HIGH TRUST are gated on real identity/unique-buyer evidence.
 - Checkout body is a strict schema; client geo is not trusted. Inbox `processed_at` is terminal-only with pending recovery. PAYOUT_FAILED after PAID is recon. Concurrent full refunds cannot both REQUESTED.
-- Role-gated ops consoles with hold/restrict/recon/inbox/outbox mutations (reason + idempotency + step-up). GitHub Actions Node 24.19.0 / pnpm 10.15.1 / host PostgreSQL 18 / migrate / seed / `pnpm verify` / secret scan / SBOM / artifact upload.
+- Role-gated ops consoles with hold/restrict/recon/inbox/outbox mutations (reason + idempotency + step-up). GitHub Actions Node 24.19.0 / pnpm 10.15.1 / host PostgreSQL 18 / migrate / seed / `pnpm verify` / secret scan / SBOM; artifact upload remains quota-blocked.
 
 ## Milestones
 
@@ -34,7 +36,7 @@
 | 4 | Guest privacy/mock checkout | VERIFIED | guest GET/POST, stable idempotency | none | none |
 | 5 | Fulfillment/disputes/reviews | VERIFIED | domain commands + acceptance-matrix D/E | none | none |
 | 6 | Financial integrity/risk | VERIFIED | request≠paid, event outcomes, 0004/0005 | none | none |
-| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles + mutations, dual-verify e97f1a1 | remote CI of this SHA | keep PR open |
+| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles + mutations, dual-verify 7a86e58 | GitHub artifact quota (upload not persisted) | keep PR open |
 | 8 | Provider sandbox | BLOCKED_EXTERNAL | | Provider ADR/credentials | wait LIVE-009 |
 | 9 | Live money | BLOCKED_EXTERNAL | | LIVE gates | wait |
 
@@ -46,8 +48,8 @@
 | Property/contract/integration/migrations/security | pnpm scripts | PASS | 2026-08-30 |
 | Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-30 |
 | Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-30 |
-| Dual clean-checkout `pnpm verify` | detached worktree of `e97f1a1` | VERIFY_OK twice (142 unit, 16 Playwright, 16 simulator) | 2026-08-30 |
-| GitHub Actions | `.github/workflows/verify.yml` | pending on `e97f1a1` after this evidence stamp | 2026-08-30 |
+| Dual clean-checkout `pnpm verify` | detached worktree of `7a86e58d107bf77ab16fd04fa21982236a5d9cab` | VERIFY_OK twice (142 unit, 16 Playwright, 16 simulator) | 2026-08-30 |
+| GitHub Actions | `.github/workflows/verify.yml` run [33298797636](https://github.com/laney9937-web/paid/actions/runs/33298797636) | `conclusion=success` on `7a86e58d107bf77ab16fd04fa21982236a5d9cab`. Upload reports errored `Failed to CreateArtifact: Artifact storage quota has been hit`; artifacts `total_count=0` | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

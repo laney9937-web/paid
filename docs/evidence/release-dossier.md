@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `e97f1a12240f42d2c38669e5b7c3c3b403a4af72` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 142 unit / 16 Playwright / 16 simulator)  
+**Commit:** `7a86e58d107bf77ab16fd04fa21982236a5d9cab` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 142 unit / 16 Playwright / 16 simulator)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity` + `0005_refund_cap_inbox_recovery`  
 **Dependency lock digest:** `docs/evidence/sbom.json` (lock `e460c7ba6a7b9c5a850b11ff8f2e1bc285161ee6b35390ea53ba5ca23d91e385`)  
@@ -36,12 +36,12 @@ pnpm verify
 
 Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABASE_URL` and `TOKEN_HMAC_KEY_V1` from `.env.example`.
 
-Clean-checkout evidence (detached worktree of `e97f1a1`):
+Clean-checkout evidence (detached worktree of `7a86e58d107bf77ab16fd04fa21982236a5d9cab`):
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity` + `0005_refund_cap_inbox_recovery`)
 - `pnpm verify` twice → both `VERIFY_OK` (142 unit including `tests/adversarial-integrity.test.ts`, `tests/ops-http.test.ts`, `tests/checkout-http.test.ts`, 16 Playwright, 16 simulator)
-- GitHub Actions: self-hosted Linux runner (GitHub-hosted minutes remain billing-locked). Workflow pins Node 24.19.0 and pnpm 10.15.1, confirms host PostgreSQL 18, and uploads SBOM/report artifacts with `continue-on-error` because artifact quota previously failed a green verify. Remote conclusion for `e97f1a1` is recorded after the push of this evidence stamp.
+- GitHub Actions: self-hosted Linux runner (GitHub-hosted minutes remain billing-locked). Workflow pins Node 24.19.0 and pnpm 10.15.1, confirms host PostgreSQL 18. Run [33298797636](https://github.com/laney9937-web/paid/actions/runs/33298797636) `conclusion=success` on `7a86e58d107bf77ab16fd04fa21982236a5d9cab`. `actions/upload-artifact@v4` is `continue-on-error` and did not persist files: `Failed to CreateArtifact: Artifact storage quota has been hit`; `total_count=0`. In-repo SBOM: `docs/evidence/sbom.json`. A git commit cannot contain its own object id; this dossier names the verified tree. Confirm with `git merge-base --is-ancestor 7a86e58d107bf77ab16fd04fa21982236a5d9cab HEAD`.
 
 ## 4. Test/build results
 
