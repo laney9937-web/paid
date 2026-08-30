@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `7e534ecdda0f9a98b30196d376ee9c82d2d9a2c7` (`repair/auth-financial-trust-integrity`)  
+**Commit:** `e97f1a12240f42d2c38669e5b7c3c3b403a4af72` (`repair/auth-financial-trust-integrity`)  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `7e534ec` both `VERIFY_OK` (128 unit, 15 Playwright, 16 simulator). GitHub Actions `verify` on that SHA concluded **success**: https://github.com/laney9937-web/paid/actions/runs/33296730347 (PR https://github.com/laney9937-web/paid/pull/2). Provider-agnostic mock boundary unchanged: no Segpay/CCBill/Verotel, no live money.
+`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `e97f1a1` both `VERIFY_OK` (142 unit, 16 Playwright, 16 simulator). GitHub Actions of this SHA is the remaining remote gate (PR https://github.com/laney9937-web/paid/pull/2). Provider-agnostic mock boundary unchanged: no Segpay/CCBill/Verotel, no live money.
 
 ## What this repair changed
 
@@ -17,10 +17,11 @@
 - Checkout idempotency key is required (not invented). PayForm reuses one key per share id via `sessionStorage`.
 - Payout request reserves payable (`PAYOUT_RESERVED`); `PAYOUT_PAID` journals once on the provider event. Refund request does not journal; `REFUND_SUCCEEDED` journals once with `sourceId = refundId`.
 - Exhaustive provider-event outcomes: APPLIED / DUPLICATE / STORED_PENDING_DEPENDENCY / RECONCILIATION_REQUIRED / UNKNOWN_ALERTED / REJECTED_INVALID.
-- Additive migration `0004_auth_financial_integrity`: FKs, unique financial sources, deferred journal-balance trigger, append-only ledger/audit, payouts, envelopes, OCC-ready versions.
+- Additive migrations `0004_auth_financial_integrity` and `0005_refund_cap_inbox_recovery` (refund cap trigger).
 - Ledger-derived balances; failed/cancelled txs do not inflate pending. MOCK fee v2: 5% creator, 3.9%+$0.49 buyer protection cap $4.99, min $20.
-- Public GET does not create demo links; production web has no `@paid/test-support`; trust is computed, never hardcoded HIGH TRUST.
-- Role-gated ops consoles; GitHub Actions workflow for Node 24 / pnpm frozen / Postgres 18 / migrate / seed / `pnpm verify` / secret scan / SBOM.
+- Public GET does not create demo links; production web has no `@paid/test-support`; verification mark and HIGH TRUST are gated on real identity/unique-buyer evidence.
+- Checkout body is a strict schema; client geo is not trusted. Inbox `processed_at` is terminal-only with pending recovery. PAYOUT_FAILED after PAID is recon. Concurrent full refunds cannot both REQUESTED.
+- Role-gated ops consoles with hold/restrict/recon/inbox/outbox mutations (reason + idempotency + step-up). GitHub Actions Node 24.19.0 / pnpm 10.15.1 / host PostgreSQL 18 / migrate / seed / `pnpm verify` / secret scan / SBOM / artifact upload.
 
 ## Milestones
 
@@ -32,8 +33,8 @@
 | 3 | Creator/public product | VERIFIED | create-link e2e, truthful trust | none | none |
 | 4 | Guest privacy/mock checkout | VERIFIED | guest GET/POST, stable idempotency | none | none |
 | 5 | Fulfillment/disputes/reviews | VERIFIED | domain commands + acceptance-matrix D/E | none | none |
-| 6 | Financial integrity/risk | VERIFIED | request≠paid, event outcomes, 0004 | none | none |
-| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles, GHA success on 7e534ec | none | keep PR open |
+| 6 | Financial integrity/risk | VERIFIED | request≠paid, event outcomes, 0004/0005 | none | none |
+| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles + mutations, dual-verify e97f1a1 | remote CI of this SHA | keep PR open |
 | 8 | Provider sandbox | BLOCKED_EXTERNAL | | Provider ADR/credentials | wait LIVE-009 |
 | 9 | Live money | BLOCKED_EXTERNAL | | LIVE gates | wait |
 
@@ -41,12 +42,12 @@
 
 | Check | Command/evidence | Result | Last run |
 |---|---|---|---|
-| Unit | `pnpm test` | PASS (128) | 2026-08-30 |
+| Unit | `pnpm test` | PASS (142) | 2026-08-30 |
 | Property/contract/integration/migrations/security | pnpm scripts | PASS | 2026-08-30 |
 | Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-30 |
 | Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-30 |
-| Dual clean-checkout `pnpm verify` | detached worktree of `7e534ec` | VERIFY_OK twice (128 unit, 15 Playwright, 16 simulator) | 2026-08-30 |
-| GitHub Actions | `.github/workflows/verify.yml` run 33296730347 | success on `7e534ec` | 2026-08-30 |
+| Dual clean-checkout `pnpm verify` | detached worktree of `e97f1a1` | VERIFY_OK twice (142 unit, 16 Playwright, 16 simulator) | 2026-08-30 |
+| GitHub Actions | `.github/workflows/verify.yml` | pending on `e97f1a1` after this evidence stamp | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

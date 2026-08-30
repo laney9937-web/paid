@@ -6,7 +6,7 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 |---|---|---|---|---|---|---|---|---|---|
 | BUILD-001 | 10_ A | Node 24 LTS + Next 16.x pinned | package.json, .nvmrc, apps/web/package.json | scripts/verify.mjs nodeMajor===24 | docs/evidence/sbom.json | local | VERIFIED | integrating agent | Next 16.3.3, Node 24.19.0 |
 | BUILD-002 | 10_ A | One pnpm lockfile; frozen install | pnpm-lock.yaml, packageManager | pnpm install --frozen-lockfile via verify | docs/evidence/sbom.json | local | VERIFIED | integrating agent | pnpm 10.15.1 |
-| BUILD-003 | 10_ A | web, ops, worker run locally | apps/web, apps/ops, apps/worker | pnpm verify builds + Playwright webServers | playwright.config.ts | local+CI | VERIFIED | integrating agent | local :3000/:3001; CI Playwright :3100/:3101 |
+| BUILD-003 | 10_ A | web, ops, worker run locally | apps/web, apps/ops, apps/worker | pnpm verify builds + Playwright webServers | playwright.config.ts | local+CI | VERIFIED | integrating agent | local :3000/:3001; CI Playwright :3100/:3101; migrations through 0005 |
 | BUILD-004 | 10_ A | Docker Compose PostgreSQL | docker-compose.yml postgres:18.6-alpine | tests/pg-uow.test.ts, tests/pg-constraints.test.ts | n/a | local | VERIFIED | integrating agent | volume /var/lib/postgresql |
 | BUILD-005 | 10_ A | Strict TS, lint, format, tests, production builds | tsconfig.json, eslint.config.js, scripts/verify.mjs | pnpm verify format/lint/typecheck/test/build | n/a | local | VERIFIED | integrating agent | |
 | BUILD-006 | 10_ A | pnpm verify exists and passes | scripts/verify.mjs, package.json | pnpm verify | docs/evidence/release-dossier.md | local | VERIFIED | integrating agent | |
