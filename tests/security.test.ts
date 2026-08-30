@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { denyOrderCodeAuth } from '@paid/authorization';
 import { AppError } from '@paid/contracts';
 import { assertNoProhibitedFeatures } from '@paid/risk';
+import { assertAppPath } from '../apps/web/src/server/app-path';
 
 describe('security static and unit guards', () => {
   it('public order code is never treated as authentication', () => {
@@ -19,6 +20,12 @@ describe('security static and unit guards', () => {
     expect(sw).toContain("url.pathname.startsWith('/api')");
     expect(sw).toContain("url.pathname.startsWith('/guest')");
     expect(sw).toContain("url.pathname.startsWith('/transaction')");
+  });
+
+  it('app redirects refuse absolute and protocol-relative locations', () => {
+    expect(assertAppPath('/transaction/ABC')).toBe('/transaction/ABC');
+    expect(() => assertAppPath('https://evil.example/phish')).toThrow(/non-app/);
+    expect(() => assertAppPath('//evil.example/phish')).toThrow(/non-app/);
   });
 
   it('no file upload inputs in web app', () => {

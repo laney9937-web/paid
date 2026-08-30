@@ -89,7 +89,7 @@ Status values: `VERIFIED` | `NOT_APPLICABLE` (with rationale) | `BLOCKED_EXTERNA
 | I-02 | Challenge one-time and expires | unit | tests/acceptance-matrix.test.ts I-02 | local | PASS | vitest | VERIFIED | MAGIC_LINK_TTL_MS |
 | I-03 | Session rotates after elevation | unit | tests/acceptance-matrix.test.ts I-03 | local | PASS | vitest | VERIFIED | rotateSession |
 | I-04 | Cookie attributes | unit | tests/acceptance-matrix.test.ts I-04 | local | PASS | vitest | VERIFIED | HttpOnly/Secure/SameSite=Lax |
-| I-05 | Magic-link resists enumeration | unit | tests/acceptance-matrix.test.ts I-05; magic-link route | local | PASS | vitest | VERIFIED | same public ack |
+| I-05 | Magic-link resists enumeration | unit+e2e | tests/magic-link-http.test.ts; tests/e2e/magic-link.spec.ts; I-05 ack | local | PASS | vitest + playwright | VERIFIED | same public ack; token absent from HTTP body |
 | I-06 | Recovery cannot immediately change payout | unit | tests/acceptance-matrix.test.ts I-06 / F-03 | local | PASS | vitest | VERIFIED | cooldown + payoutHold |
 | I-07 | Admin vs customer cookies isolated | unit | tests/acceptance-matrix.test.ts I-07 | local | PASS | vitest | VERIFIED | paid_session vs paid_ops_session |
 | I-08 | Concurrent logout/revocation | unit | tests/acceptance-matrix.test.ts I-08 | local | PASS | vitest | VERIFIED | revokeSessions |
@@ -122,10 +122,10 @@ Status values: `VERIFIED` | `NOT_APPLICABLE` (with rationale) | `BLOCKED_EXTERNA
 | L-08 | External compliance decisions versioned | static+unit | docs/external-compliance-decisions.md; snapshot policy versions | local | PASS | docs + vitest D-10 | VERIFIED | cannot rewrite snapshots |
 | L-09 | Failed/dormant payout not platform revenue | unit+sim | tests/acceptance-matrix.test.ts L-09; simulator payout-failure-and-retry | local | PASS | vitest | VERIFIED | |
 | L-10 | Analytics failure does not block checkout | static | tests/static-invariants.test.ts L-13 (create-checkout has no analytics) | local | PASS | vitest | VERIFIED | |
-| L-11 | Fresh DB + first schema migration | unit | tests/migrations.test.ts; 0001_init.sql | local | PASS | vitest | VERIFIED | no prior supported schema |
+| L-11 | Fresh DB + first schema migration | unit | tests/migrations.test.ts; 0001_init.sql; 0002_auth_outbox.sql | local | PASS | vitest | VERIFIED | migrate applies sorted SQL; 0002 additive |
 | L-12 | Old/new app versions process events | unit+sim | canonical schemaVersion; unknown-valid-event | local | PASS | vitest + mock:scenario | VERIFIED | unknown retained |
 | L-13 | SBOM/dependency/secrets/build manifest | script | scripts/sbom.mjs; docs/evidence/sbom.json | local | PASS | pnpm sbom | VERIFIED | |
-| L-14 | Release artifact maps to commit + migration | docs | docs/evidence/release-dossier.md | local | PASS | dossier | VERIFIED | 0001_init + git SHA |
+| L-14 | Release artifact maps to commit + migration | docs | docs/evidence/release-dossier.md | local | PASS | dossier | VERIFIED | SHA `68b207f`; 0001_init + 0002_auth_outbox |
 | BRAND-01 | Customer-facing surfaces use Paid | static+e2e | tests/static-invariants.test.ts; core-pages | local | PASS | vitest + playwright | VERIFIED | |
 | BRAND-02 | Domain examples use paid.example | static | tests/static-invariants.test.ts; seed | local | PASS | vitest | VERIFIED | maya@paid.example |
 | BRAND-03 | No trademark/escrow/absolute-guarantee claims | static | tests/static-invariants.test.ts | local | PASS | vitest | VERIFIED | |

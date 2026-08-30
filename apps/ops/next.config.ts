@@ -3,7 +3,16 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@paid/auth', '@paid/ui'],
+  serverExternalPackages: ['postgres'],
+  transpilePackages: [
+    '@paid/auth',
+    '@paid/config',
+    '@paid/contracts',
+    '@paid/db',
+    '@paid/domain',
+    '@paid/observability',
+    '@paid/ui',
+  ],
   async headers() {
     return [
       {

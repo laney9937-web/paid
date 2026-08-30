@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## Unreleased — Staff schema and default-deny layouts
+
+- `users.staff_role` (migration `0003_staff`); magic-link purposes `MAGIC_LINK` vs `MAGIC_LINK_OPS`.
+- Ops/creator private pages live under `(staff)` / `(authed)` layouts; Maya cannot obtain `paid_ops_session`.
+
+## Unreleased — Magic-link delivery and session-gated home
+
+- Creator/ops magic-link issue stores HMAC digest and puts the one-time continue URL only in the EMAIL_MAGIC_LINK outbox payload.
+- GET continue peeks without consuming; GET consume returns 405; POST consume sets the hashed session cookie.
+- `/creator/home` requires a creator session and no longer projects Maya balances to anonymous GETs.
+
+## Unreleased — PROVIDER_AGNOSTIC HTTP/worker wiring
+
+- Creator APIs require hashed `paid_session`; local seed session is HMAC-stored, not a raw actor stub.
+- Guest ACCESS tokens are peek-only on GET; POST issues a hashed SESSION cookie (HttpOnly, SameSite, Secure from origin).
+- Mock capture requires the guest session and a signed mock webhook body; public order codes cannot capture.
+- Public `/c/[handle]` trust tier is computed from real reviews and captured counts.
+- Worker leases Postgres `outbox_jobs` (`FOR UPDATE SKIP LOCKED`) and records `side_effect_at` so crash-before-ack retries do not resend.
+- Web/ops/worker fail-closed at boot and start OTel; Playwright loads `.env.example` because `next start` does not.
+- Live-money fail-closed gates use `PAID_ENV` / `PAID_BUILD_MODE`, not `NODE_ENV` (required by `next start`).
+
 ## 2.3 — Paid working-brand pass
 
 - Locked `Paid` as the customer-facing working product name and updated the PWA prototype.

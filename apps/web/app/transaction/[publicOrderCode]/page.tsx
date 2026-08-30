@@ -1,7 +1,7 @@
-import { cookies } from 'next/headers';
 import { formatUsd } from '@paid/contracts';
-import { GUEST_SESSION_COOKIE } from '@paid/auth';
+import { resolveGuestSession } from '@paid/domain';
 import { withStore } from '../../../src/server/store';
+import { readGuestCookie } from '../../../src/server/session';
 import { MockPayButton } from './mock-pay-button';
 
 export const dynamic = 'force-dynamic';
@@ -18,8 +18,8 @@ export default async function ReceiptPage({
     const snapshot = await uow.getSnapshot(tx.snapshotId);
     return { tx, snapshot };
   });
-  const jar = await cookies();
-  const guestTx = jar.get(GUEST_SESSION_COOKIE)?.value;
+  const cookie = await readGuestCookie();
+  const guest = data ? await withStore((uow) => resolveGuestSession(uow, cookie)) : null;
   if (!data) {
     return (
       <main className="page">
@@ -29,7 +29,7 @@ export default async function ReceiptPage({
     );
   }
   const { tx, snapshot } = data;
-  const authorized = guestTx === tx.id;
+  const authorized = guest?.transactionId === tx.id;
   return (
     <main className="page">
       <div className="kicker">Paid</div>
@@ -53,8 +53,19 @@ export default async function ReceiptPage({
           <p className="meta">
             Fulfillment: {tx.fulfillmentState.replaceAll('_', ' ').toLowerCase()}
           </p>
-          {tx.paymentState !== 'CAPTURED' ? (
-            <MockPayButton publicOrderCode={tx.publicOrderCode} />
+          {tx.paymentState !== 'CAPTURED' ? <MockPayButton /> : null}
+          {tx.paymentState === 'CAPTURED' ? (
+            <div className="stack" style={{ marginTop: 24 }}>
+              <a className="secondary" href={`/transaction/${tx.publicOrderCode}/confirm`}>
+                Confirm delivery
+              </a>
+              <a className="secondary" href={`/transaction/${tx.publicOrderCode}/dispute`}>
+                Open a dispute
+              </a>
+              <a className="secondary" href={`/transaction/${tx.publicOrderCode}/review`}>
+                Leave a review
+              </a>
+            </div>
           ) : null}
         </>
       ) : (

@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { addCreatorSessionCookie } from './session';
 
-test('creator creates a one-time shareable link', async ({ page }) => {
+test('creator creates a one-time shareable link', async ({ page, context }) => {
+  await addCreatorSessionCookie(context);
   await page.goto('/creator/create');
   await page.getByTestId('link-amount').fill('42.00');
   await page.getByTestId('create-link').click();

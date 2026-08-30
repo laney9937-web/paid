@@ -7,8 +7,8 @@ import {
   type TransactionCategory,
 } from '@paid/contracts';
 import { createTransactionLink } from '@paid/domain';
-import { creatorActor } from '@paid/test-support';
 import { withStore } from '../../../../src/server/store';
+import { requireCreatorSession } from '@paid/auth/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +41,17 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const session = await requireCreatorSession();
     const link = await withStore((uow) =>
       createTransactionLink(uow, {
-        actor: creatorActor(),
+        actor: {
+          actorType: 'CREATOR',
+          actorId: session.userId,
+          creatorId: session.creatorId,
+          sessionId: session.id,
+          authStrength: 'EMAIL_LINK',
+          requestId,
+        },
         amountMinor: dollarsToMinor(body.amount!),
         category: body.category!,
         deliveryDuration: body.deliveryDuration!,

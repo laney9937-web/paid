@@ -67,6 +67,51 @@ describe('static product and security invariants', () => {
     }
   });
 
+  it('private creator and ops pages are behind default-deny route groups', () => {
+    const opsPages = walk(join(root, 'apps/ops/app/ops')).filter((f) => f.endsWith('page.tsx'));
+    expect(opsPages.length).toBeGreaterThan(3);
+    for (const file of opsPages) {
+      const rel = file.replaceAll('\\', '/');
+      if (rel.includes('/sign-in/')) continue;
+      expect(rel, rel).toContain('/(staff)/');
+    }
+    const creatorPages = walk(join(root, 'apps/web/app/creator')).filter((f) =>
+      f.endsWith('page.tsx'),
+    );
+    expect(creatorPages.length).toBeGreaterThan(3);
+    for (const file of creatorPages) {
+      const rel = file.replaceAll('\\', '/');
+      if (rel.includes('/sign-in/')) continue;
+      expect(rel, rel).toContain('/(authed)/');
+    }
+  });
+
+  it('mutating creator and ops APIs import session guards except magic-link issue', () => {
+    const creatorApis = walk(join(root, 'apps/web/app/api/creator')).filter((f) =>
+      f.endsWith('route.ts'),
+    );
+    for (const file of creatorApis) {
+      const rel = file.replaceAll('\\', '/');
+      if (rel.includes('/magic-link/')) continue;
+      expect(readFileSync(file, 'utf8'), rel).toContain('requireCreatorSession');
+    }
+    const opsApis = walk(join(root, 'apps/ops/app/api/ops')).filter((f) => f.endsWith('route.ts'));
+    for (const file of opsApis) {
+      const rel = file.replaceAll('\\', '/');
+      if (rel.includes('/magic-link/')) continue;
+      expect(readFileSync(file, 'utf8'), rel).toContain('requireOpsSession');
+    }
+  });
+
+  it('AUTH-001 magic-link HTTP delivers continueUrl and does not discard the token', () => {
+    const issue = read('apps/web/app/api/creator/magic-link/route.ts');
+    expect(issue).toContain('continueUrl');
+    expect(issue).not.toContain('void issued.token');
+    const consume = read('apps/web/app/api/creator/magic-link/consume/route.ts');
+    expect(consume).toContain('export async function GET');
+    expect(consume).toContain('405');
+  });
+
   it('H-10 COMP-009 no arbitrary user-URL server fetch', () => {
     const routes = walk(join(root, 'apps/web/app/api'));
     for (const file of routes) {

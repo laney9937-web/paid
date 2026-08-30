@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `ca015b2dc59751f82c336bce4fa2c7a1a113af9c`  
-**Last updated:** 2026-08-29  
+**Commit:** `d3ae6c8bb1ed69be8009771e1db58bf0349addd3`  
+**Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_VERIFIED` (non-LIVE matrix rows `VERIFIED` or justified `NOT_APPLICABLE`; all `LIVE-*` remain `BLOCKED_EXTERNAL`)
+`PROVIDER_AGNOSTIC_VERIFIED` — dual clean-checkout `pnpm verify` of `d3ae6c8` both `VERIFY_OK` (109 unit including `magic-link-http` + default-deny walk tests; 15 Playwright including Maya cannot reach `/ops/cases` or `/creator/account`; 16 simulator). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 
@@ -28,14 +28,14 @@
 
 | Check | Command/evidence | Result | Last run |
 |---|---|---|---|
-| Frozen install | pnpm install | PASS | 2026-08-29 |
-| Format/lint/typecheck | pnpm verify | PASS | 2026-08-29 |
-| Unit/property | pnpm test / test:property | PASS (acceptance-matrix + prior suite) | 2026-08-29 |
-| Integration/contract | simulator + pg constraints + pg-uow | PASS | 2026-08-29 |
-| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS | 2026-08-29 |
-| Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-29 |
-| Build | web/ops/worker | PASS Next 16.3.3 | 2026-08-29 |
-| `pnpm verify` | scripts/verify.mjs twice from clean worktree | VERIFY_OK (97 unit, 11 Playwright) | 2026-08-29 |
+| Frozen install | `pnpm install --frozen-lockfile` in detached worktree of `d3ae6c8` | PASS | 2026-08-30 |
+| Format/lint/typecheck | pnpm verify | PASS | 2026-08-30 |
+| Unit/property | pnpm test / test:property | PASS (109 unit; 3 property) | 2026-08-30 |
+| Integration/contract | simulator + pg constraints + pg-uow + pg-outbox | PASS | 2026-08-30 |
+| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom + magic-link + authz gates | PASS (15) | 2026-08-30 |
+| Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-30 |
+| Build | web/ops/worker | PASS Next 16.3.3 webpack | 2026-08-30 |
+| `pnpm verify` | detached worktree of `d3ae6c8`: reset/migrate/seed (`0003_staff`) then `pnpm verify` twice | VERIFY_OK twice | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 
@@ -44,7 +44,6 @@
 | SEC-010 | Independent pentest is LIVE-010 and cannot be self-approved |
 | ACC-002 | Dedicated screen-reader session is an operator gate; axe + keyboard focus are automated |
 | UX-006 | WebKit/Firefox/installed-PWA need operator devices; Chromium is automated |
-| REL-007 | First schema only (`0001_init`); no previous supported schema |
 | REL-008 | No V1 historical backfill jobs |
 | REL-011 | PITR restore requires a live host |
 | REL-014 | Production cutover is out of scope for PROVIDER_AGNOSTIC |

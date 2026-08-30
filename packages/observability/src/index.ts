@@ -5,6 +5,7 @@ const REDACT_PATHS = [
   'req.headers.authorization',
   '*.token',
   '*.guestToken',
+  '*.continueUrl',
   '*.secret',
   '*.pan',
   '*.cvv',
@@ -28,3 +29,5 @@ export function assertNoSensitive(payload: unknown): void {
     throw new Error('sensitive payment data in log payload');
   }
 }
+
+export * from './otel';

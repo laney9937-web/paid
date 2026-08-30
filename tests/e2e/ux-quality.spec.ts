@@ -19,7 +19,9 @@ test('K-10 reduced motion disables transitions on the public surface', async ({ 
   expect(animation === 'none' || animation === '').toBe(true);
 });
 
-test('K-06 create-link validation keeps the typed amount', async ({ page }) => {
+test('K-06 create-link validation keeps the typed amount', async ({ page, context }) => {
+  const { addCreatorSessionCookie } = await import('./session');
+  await addCreatorSessionCookie(context);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/creator/create');
   const amount = page.getByTestId('link-amount');

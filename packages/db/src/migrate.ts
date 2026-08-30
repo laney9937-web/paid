@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
@@ -11,13 +11,16 @@ if (!url) {
   process.exit(1);
 }
 
-const dir = dirname(fileURLToPath(import.meta.url));
-const sqlFile = join(dir, 'migrations', '0001_init.sql');
-const body = readFileSync(sqlFile, 'utf8');
+const dir = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
+const files = readdirSync(dir)
+  .filter((name) => name.endsWith('.sql'))
+  .sort();
 const sql = postgres(url, { max: 1 });
 try {
-  await sql.unsafe(body);
-  console.log('migrated 0001_init');
+  for (const file of files) {
+    await sql.unsafe(readFileSync(join(dir, file), 'utf8'));
+    console.log(`migrated ${file.replace(/\.sql$/, '')}`);
+  }
 } finally {
   await sql.end();
 }

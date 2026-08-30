@@ -20,18 +20,21 @@ export function collectFailClosedFindings(
   },
 ): FailClosedFinding[] {
   const findings: FailClosedFinding[] = [];
-  const isProduction = config.PAID_ENV === 'production' || config.NODE_ENV === 'production';
+  // next start always sets NODE_ENV=production. Live-money gates use PAID_ENV /
+  // PAID_BUILD_MODE so local PROVIDER_AGNOSTIC production builds can still mock.
+  const isProductionMoney =
+    config.PAID_ENV === 'production' || config.PAID_BUILD_MODE === 'PRODUCTION_MONEY';
   const liveCheckout =
     config.PAYMENTS_ACCEPTANCE === 'live' || config.PAYMENTS_ACCEPTANCE === 'sandbox';
 
-  if (isProduction && config.SIMULATOR_ENABLED) {
+  if (isProductionMoney && config.SIMULATOR_ENABLED) {
     findings.push({
       code: 'SIMULATOR_IN_PRODUCTION',
       message: 'Provider simulator cannot be enabled in production',
     });
   }
 
-  if (isProduction && config.PROVIDER_MODE === 'mock' && config.CHECKOUT_ENABLED) {
+  if (isProductionMoney && config.PROVIDER_MODE === 'mock' && config.CHECKOUT_ENABLED) {
     findings.push({
       code: 'MOCK_PAYMENTS_IN_PRODUCTION',
       message: 'Production startup rejects mock payments while payment acceptance is enabled',
@@ -80,7 +83,7 @@ export function collectFailClosedFindings(
     });
   }
 
-  if (isProduction && !config.OPS_STRONG_AUTH_REQUIRED) {
+  if (isProductionMoney && !config.OPS_STRONG_AUTH_REQUIRED) {
     findings.push({
       code: 'OPS_STRONG_AUTH_DISABLED',
       message: 'Ops strong-auth requirement is disabled',

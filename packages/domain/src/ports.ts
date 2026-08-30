@@ -99,6 +99,10 @@ export interface UnitOfWork {
   getReviewByTransaction(transactionId: string): Promise<ReviewRecord | null>;
   updateReview(review: ReviewRecord): Promise<void>;
 
+  listReviewsByCreator(creatorId: string): Promise<ReviewRecord[]>;
+  countCapturedByCreator(creatorId: string): Promise<number>;
+  listAuditsByAction(action: string): Promise<AuditRecord[]>;
+
   countSuccessfulPaymentsByLink(linkId: string): Promise<number>;
   journalIsBalanced(entryId: string): Promise<boolean>;
   listJournalLines(entryId: string): Promise<LedgerEntryInput['lines']>;
