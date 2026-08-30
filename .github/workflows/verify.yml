@@ -49,13 +49,3 @@ jobs:
         run: pnpm verify
       - name: SBOM
         run: pnpm sbom
-      - name: Upload reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verify-evidence
-          path: |
-            docs/evidence/sbom.json
-            playwright-report/**
-            test-results/**
-          if-no-files-found: ignore
