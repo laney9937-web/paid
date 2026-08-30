@@ -177,9 +177,6 @@ importers:
       '@paid/payments-mock':
         specifier: workspace:*
         version: link:../../packages/payments-mock
-      '@paid/test-support':
-        specifier: workspace:*
-        version: link:../../packages/test-support
       '@paid/trust':
         specifier: workspace:*
         version: link:../../packages/trust
