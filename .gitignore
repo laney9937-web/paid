@@ -21,6 +21,7 @@ apps/ops/.next
 apps/worker/dist
 packages/*/dist
 sbom.json
+!docs/evidence/sbom.json
 .playwright
 .nyc_output
 infra/postgres-data

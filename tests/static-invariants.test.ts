@@ -131,6 +131,7 @@ describe('static product and security invariants', () => {
   it('L-05/L-12/L-13 runbooks, canonical event versioning, and SBOM exist', () => {
     expect(read('docs/runbooks/provider-outage.md')).toContain('Immediate containment');
     expect(read('packages/contracts/src/events.ts')).toContain('schemaVersion');
+    expect(read('scripts/sbom.mjs')).toContain('Paid-SBOM');
     expect(read('docs/evidence/sbom.json')).toContain('bomFormat');
     const checkout = read('packages/domain/src/commands/create-checkout.ts');
     expect(checkout.toLowerCase()).not.toContain('analytics');
