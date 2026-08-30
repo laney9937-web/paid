@@ -1,9 +1,9 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `repair/auth-financial-trust-integrity` (SHA stamped after dual verify + GHA)  
+**Commit:** `45d3d6bd1dfcdb9d7c7c2cfa92d6a53f0d385001` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 126 unit / 15 Playwright / 16 simulator)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`  
-**Dependency lock digest:** `docs/evidence/sbom.json` (lock `8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78`)  
+**Dependency lock digest:** `docs/evidence/sbom.json` (lock `5a6b4fe7945a51dcee04de566265f33dc393161e7f6853fcecb9c2c1917c8ef9`)  
 **Build mode:** `PROVIDER_AGNOSTIC`  
 **Prepared by:** Integrating agent  
 **Review date:** 2026-08-30
@@ -36,11 +36,11 @@ pnpm verify
 
 Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABASE_URL` and `TOKEN_HMAC_KEY_V1` from `.env.example`.
 
-Clean-checkout evidence (detached worktree of `d3ae6c8`):
+Clean-checkout evidence (detached worktree of `45d3d6b`):
 
 - `pnpm install --frozen-lockfile`
-- `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff`)
-- `pnpm verify` twice → both `VERIFY_OK` (109 unit including `tests/magic-link-http.test.ts`, 15 Playwright including `tests/e2e/magic-link.spec.ts`, 16 simulator)
+- `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`)
+- `pnpm verify` twice → both `VERIFY_OK` (126 unit including `tests/adversarial-integrity.test.ts` and `tests/magic-link-http.test.ts`, 15 Playwright, 16 simulator)
 
 ## 4. Test/build results
 

@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** repair branch `repair/auth-financial-trust-integrity` (SHA stamped after verify)  
+**Commit:** `45d3d6bd1dfcdb9d7c7c2cfa92d6a53f0d385001` (`repair/auth-financial-trust-integrity`)  
 **Last updated:** 2026-08-29  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`REPAIR_IN_PROGRESS` until dual clean-checkout `pnpm verify` and GitHub Actions are green on this branch. This repair keeps the provider-agnostic mock boundary: no Segpay/CCBill/Verotel, no live money.
+`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `45d3d6b` both `VERIFY_OK` (126 unit, 15 Playwright, 16 simulator). GitHub Actions must still be green on the PR. This repair keeps the provider-agnostic mock boundary: no Segpay/CCBill/Verotel, no live money.
 
 ## What this repair changed
 
@@ -45,8 +45,8 @@
 | Property/contract/integration/migrations/security | pnpm scripts | PASS | 2026-08-29 |
 | Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-29 |
 | Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-29 |
-| Dual clean-checkout `pnpm verify` | pending | pending | |
-| GitHub Actions | `.github/workflows/verify.yml` | pending remote | |
+| Dual clean-checkout `pnpm verify` | detached worktree of `45d3d6b` | VERIFY_OK twice | 2026-08-29 |
+| GitHub Actions | `.github/workflows/verify.yml` | pending remote on PR | |
 
 ## Honest NOT_APPLICABLE (non-live)
 
