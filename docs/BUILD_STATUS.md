@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** pending dual clean-checkout of staff default-deny kernel  
+**Commit:** `d3ae6c8bb1ed69be8009771e1db58bf0349addd3`  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`NOT_COMPLETE` until dual clean-checkout `pnpm verify` of this staff-authz kernel. Staff is `users.staff_role`; ops/creator private pages sit behind `(staff)`/`(authed)` layouts. Maya cannot mint `paid_ops_session`. All `LIVE-*` remain `BLOCKED_EXTERNAL`.
+`PROVIDER_AGNOSTIC_VERIFIED` — dual clean-checkout `pnpm verify` of `d3ae6c8` both `VERIFY_OK` (109 unit including `magic-link-http` + default-deny walk tests; 15 Playwright including Maya cannot reach `/ops/cases` or `/creator/account`; 16 simulator). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 
@@ -28,14 +28,14 @@
 
 | Check | Command/evidence | Result | Last run |
 |---|---|---|---|
-| Frozen install | `pnpm install --frozen-lockfile` in detached worktree of `68b207f` | PASS | 2026-08-30 |
+| Frozen install | `pnpm install --frozen-lockfile` in detached worktree of `d3ae6c8` | PASS | 2026-08-30 |
 | Format/lint/typecheck | pnpm verify | PASS | 2026-08-30 |
-| Unit/property | pnpm test / test:property | PASS (101 unit; 3 property) | 2026-08-30 |
+| Unit/property | pnpm test / test:property | PASS (109 unit; 3 property) | 2026-08-30 |
 | Integration/contract | simulator + pg constraints + pg-uow + pg-outbox | PASS | 2026-08-30 |
-| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS (11) | 2026-08-30 |
+| E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom + magic-link + authz gates | PASS (15) | 2026-08-30 |
 | Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-30 |
 | Build | web/ops/worker | PASS Next 16.3.3 webpack | 2026-08-30 |
-| `pnpm verify` | detached worktree of `68b207f`: reset/migrate/seed then `pnpm verify` twice | VERIFY_OK twice | 2026-08-30 |
+| `pnpm verify` | detached worktree of `d3ae6c8`: reset/migrate/seed (`0003_staff`) then `pnpm verify` twice | VERIFY_OK twice | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `ae1a66bb9632d5b23874f7f766b89c963b2cb79e` (this tree `pnpm verify` → `VERIFY_OK`, 105 unit / 14 Playwright)  
+**Commit:** `d3ae6c8bb1ed69be8009771e1db58bf0349addd3` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 109 unit / 15 Playwright)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox`  
 **Dependency lock digest:** `docs/evidence/sbom.json` (lock `8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78`)  
@@ -36,12 +36,11 @@ pnpm verify
 
 Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABASE_URL` and `TOKEN_HMAC_KEY_V1` from `.env.example`.
 
-Clean-checkout evidence (detached worktree of `68b207f`, not the dirty primary tree):
+Clean-checkout evidence (detached worktree of `d3ae6c8`):
 
 - `pnpm install --frozen-lockfile`
-- `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox`)
-- `pnpm verify` twice → both `VERIFY_OK` (101 unit, 11 Playwright, 16 simulator)
-- Live launch from that worktree: `GET /c/maya` 200 with Maya + BUILDING TRUST + Pay Maya; `GET :3001/ops/sign-in` 200 isolated staff copy; worker `processed: 3` / `worker pass complete`
+- `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff`)
+- `pnpm verify` twice → both `VERIFY_OK` (109 unit including `tests/magic-link-http.test.ts`, 15 Playwright including `tests/e2e/magic-link.spec.ts`, 16 simulator)
 
 ## 4. Test/build results
 
