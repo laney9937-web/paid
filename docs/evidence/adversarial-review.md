@@ -11,6 +11,9 @@ Reviewers: integrating agent plus automated negative tests. Date: 2026-08-29.
 | High (prevented) | GET consumption of secrets | peek vs exchange |
 | Medium (fixed) | In-memory web store vs SQL | HTTP routes now use `withPostgresUow`; ASM-004 |
 | Medium (fixed) | Guest mutation 303 used raw `Referer` | `assertAppPath` same-app redirects only |
+| Medium (fixed) | Magic-link HTTP discarded the issued token | Token is in outbox `continueUrl` only; GET continue peeks; POST consume sets session (`tests/magic-link-http.test.ts`, e2e) |
+| Medium (fixed) | Unauthenticated `/creator/home` projected Maya balances | optionalCreatorSession + session.creatorId (`tests/e2e/magic-link.spec.ts`) |
+| Medium (fixed) | Ops sign-in form had no action | `/api/ops/magic-link` + continue/submit (`tests/e2e/magic-link.spec.ts`) |
 | Medium | Better Auth passkey UI not fully exercised in browser | Passkey library pinned; enrollment UI is a shell with correct RP config pins |
 | Low | Playwright WebKit/Firefox not run | Chromium+axe+320/390/zoom passed; extra engines are operator gates (UX-006 N/A) |
 

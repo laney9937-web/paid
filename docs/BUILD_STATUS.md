@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `68b207fee36ce5d3d26ae807921b81618029c56e`  
+**Commit:** pending SHA after magic-link delivery commit  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_VERIFIED` — dual clean-checkout `pnpm verify` of committed SHA `68b207f` both printed `VERIFY_OK` (101 unit, 11 Playwright Chromium, 16 simulator). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
+`PROVIDER_AGNOSTIC_VERIFIED` candidate — magic-link issue now delivers `continueUrl` via outbox; GET continue peeks; creator home is session-gated. `pnpm verify` on this tree: `VERIFY_OK` (105 unit, 14 Playwright). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 

@@ -53,6 +53,29 @@ export async function issueMagicLink(input: {
   return { stored: true, token };
 }
 
+export async function peekMagicLink(input: {
+  token: string;
+  keyring: TokenKeyring;
+  now?: Date;
+}): Promise<{ valid: boolean; expired: boolean; consumed: boolean }> {
+  const token = input.token.trim();
+  if (!token) return { valid: false, expired: false, consumed: false };
+  const sql = getSql();
+  const now = input.now ?? new Date();
+  const digests = lookupTokenDigest(input.keyring, token).map((d) => d.digestHex);
+  const rows = await sql`
+    SELECT consumed_at, expires_at FROM auth_tokens
+    WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+  `;
+  const row = rows[0] as { consumed_at: Date | null; expires_at: Date } | undefined;
+  if (!row) return { valid: false, expired: false, consumed: false };
+  if (row.consumed_at) return { valid: false, expired: false, consumed: true };
+  if (new Date(String(row.expires_at)) <= now) {
+    return { valid: false, expired: true, consumed: false };
+  }
+  return { valid: true, expired: false, consumed: false };
+}
+
 export async function consumeMagicLink(input: {
   token: string;
   keyring: TokenKeyring;
@@ -62,17 +85,29 @@ export async function consumeMagicLink(input: {
 }): Promise<{ sessionToken: string; userId: string; creatorId: string | null }> {
   const sql = getSql();
   const now = input.now ?? new Date();
-  const digests = lookupTokenDigest(input.keyring, input.token).map((d) => d.digestHex);
-  const rows = await sql`
-    SELECT * FROM auth_tokens
-    WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+  const digests = lookupTokenDigest(input.keyring, input.token.trim()).map((d) => d.digestHex);
+  const updated = await sql`
+    UPDATE auth_tokens
+    SET consumed_at = ${now}
+    WHERE digest_hex = ANY(${digests})
+      AND purpose = 'MAGIC_LINK'
+      AND consumed_at IS NULL
+      AND expires_at > ${now}
+    RETURNING *
   `;
-  const row = rows[0] as Record<string, unknown> | undefined;
-  if (!row) throw new AppError('UNAUTHENTICATED', 'This sign-in link is not valid');
-  if (row.consumed_at) throw new AppError('UNAUTHENTICATED', 'This sign-in link was already used');
-  const expires = new Date(String(row.expires_at));
-  if (expires <= now) throw new AppError('UNAUTHENTICATED', 'This sign-in link has expired');
-  await sql`UPDATE auth_tokens SET consumed_at = ${now} WHERE id = ${String(row.id)} AND consumed_at IS NULL`;
+  const row = updated[0] as Record<string, unknown> | undefined;
+  if (!row) {
+    const existing = await sql`
+      SELECT consumed_at, expires_at FROM auth_tokens
+      WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+    `;
+    const found = existing[0] as { consumed_at: Date | null; expires_at: Date } | undefined;
+    if (!found) throw new AppError('UNAUTHENTICATED', 'This sign-in link is not valid');
+    if (found.consumed_at) {
+      throw new AppError('UNAUTHENTICATED', 'This sign-in link was already used');
+    }
+    throw new AppError('UNAUTHENTICATED', 'This sign-in link has expired');
+  }
   const userId = String(row.user_id);
   let creatorId: string | null = null;
   if (input.kind === 'CREATOR') {

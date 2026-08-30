@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `68b207fee36ce5d3d26ae807921b81618029c56e` (dual clean-checkout `pnpm verify` both `VERIFY_OK`)  
+**Commit:** pending SHA after magic-link delivery (this tree `pnpm verify` → `VERIFY_OK`, 105 unit / 14 Playwright)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox`  
 **Dependency lock digest:** `docs/evidence/sbom.json` (lock `8e24ce9a37e1b7e263e8983c4f392bcf52957585c7641d43ddddd2275c823e78`)  

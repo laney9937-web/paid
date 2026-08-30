@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { redirect } from 'next/navigation';
-import { CREATOR_SESSION_IDLE_MS, WEB_SESSION_COOKIE, sessionCookieOptions } from '@paid/auth';
+import { OPS_SESSION_COOKIE, OPS_SESSION_IDLE_MS, sessionCookieOptions } from '@paid/auth';
 import { loadConfig } from '@paid/config';
 import { consumeMagicLink } from '@paid/db';
 
@@ -16,22 +16,22 @@ export async function POST(request: Request) {
     const consumed = await consumeMagicLink({
       token,
       keyring: loadConfig().tokenKeyring,
-      kind: 'CREATOR',
-      ttlMs: CREATOR_SESSION_IDLE_MS,
+      kind: 'OPS',
+      ttlMs: OPS_SESSION_IDLE_MS,
     });
     const jar = await cookies();
-    const origin = process.env.WEB_ORIGIN ?? new URL(request.url).origin;
+    const origin = process.env.OPS_ORIGIN ?? new URL(request.url).origin;
     jar.set({
-      name: WEB_SESSION_COOKIE,
+      name: OPS_SESSION_COOKIE,
       value: consumed.sessionToken,
       ...sessionCookieOptions(origin),
-      maxAge: Math.floor(CREATOR_SESSION_IDLE_MS / 1000),
+      maxAge: Math.floor(OPS_SESSION_IDLE_MS / 1000),
     });
-    redirect('/creator/home');
+    redirect('/ops/cases');
   } catch (error) {
     if (typeof error === 'object' && error && 'digest' in error) {
       throw error;
     }
-    redirect('/creator/sign-in?error=1');
+    redirect('/ops/sign-in?error=1');
   }
 }

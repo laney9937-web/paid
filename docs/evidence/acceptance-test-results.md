@@ -89,7 +89,7 @@ Status values: `VERIFIED` | `NOT_APPLICABLE` (with rationale) | `BLOCKED_EXTERNA
 | I-02 | Challenge one-time and expires | unit | tests/acceptance-matrix.test.ts I-02 | local | PASS | vitest | VERIFIED | MAGIC_LINK_TTL_MS |
 | I-03 | Session rotates after elevation | unit | tests/acceptance-matrix.test.ts I-03 | local | PASS | vitest | VERIFIED | rotateSession |
 | I-04 | Cookie attributes | unit | tests/acceptance-matrix.test.ts I-04 | local | PASS | vitest | VERIFIED | HttpOnly/Secure/SameSite=Lax |
-| I-05 | Magic-link resists enumeration | unit | tests/acceptance-matrix.test.ts I-05; magic-link route | local | PASS | vitest | VERIFIED | same public ack |
+| I-05 | Magic-link resists enumeration | unit+e2e | tests/magic-link-http.test.ts; tests/e2e/magic-link.spec.ts; I-05 ack | local | PASS | vitest + playwright | VERIFIED | same public ack; token absent from HTTP body |
 | I-06 | Recovery cannot immediately change payout | unit | tests/acceptance-matrix.test.ts I-06 / F-03 | local | PASS | vitest | VERIFIED | cooldown + payoutHold |
 | I-07 | Admin vs customer cookies isolated | unit | tests/acceptance-matrix.test.ts I-07 | local | PASS | vitest | VERIFIED | paid_session vs paid_ops_session |
 | I-08 | Concurrent logout/revocation | unit | tests/acceptance-matrix.test.ts I-08 | local | PASS | vitest | VERIFIED | revokeSessions |

@@ -6,8 +6,7 @@ import {
   readEmailField,
 } from '@paid/auth';
 import { loadConfig } from '@paid/config';
-import { emailDigest, issueMagicLink } from '@paid/db';
-import { withStore } from '../../../../src/server/store';
+import { emailDigest, issueMagicLink, withPostgresUow } from '@paid/db';
 import { newId } from '@paid/domain';
 
 export async function POST(request: Request) {
@@ -20,18 +19,18 @@ export async function POST(request: Request) {
       ttlMs: MAGIC_LINK_TTL_MS,
     });
     if (issued.stored && issued.token) {
-      const origin = process.env.WEB_ORIGIN ?? new URL(request.url).origin;
-      const continueUrl = `${origin}${magicLinkContinuePath(issued.token, 'CREATOR')}`;
-      await withStore((uow) =>
+      const origin = process.env.OPS_ORIGIN ?? new URL(request.url).origin;
+      const continueUrl = `${origin}${magicLinkContinuePath(issued.token, 'OPS')}`;
+      await withPostgresUow((uow) =>
         uow.insertOutbox({
           id: newId(),
           type: 'EMAIL_MAGIC_LINK',
           payload: {
             toDigest: emailDigest(email),
-            template: 'magic-link',
+            template: 'magic-link-ops',
             continueUrl,
           },
-          dedupeKey: `magic-link:${emailDigest(email)}:${newId()}`,
+          dedupeKey: `magic-link-ops:${emailDigest(email)}:${newId()}`,
           availableAt: uow.clock.now(),
           attemptCount: 0,
           maxAttempts: 8,
@@ -44,7 +43,7 @@ export async function POST(request: Request) {
   if (accept.includes('application/json')) {
     return NextResponse.json(ack);
   }
-  const url = new URL('/creator/sign-in', request.url);
+  const url = new URL('/ops/sign-in', request.url);
   url.searchParams.set('sent', '1');
   return NextResponse.redirect(url, 303);
 }

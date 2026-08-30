@@ -1,13 +1,10 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
 import { redirect } from 'next/navigation';
 import { CREATOR_SESSION_IDLE_MS, WEB_SESSION_COOKIE, sessionCookieOptions } from '@paid/auth';
 import { loadConfig } from '@paid/config';
 import { consumeMagicLink } from '@paid/db';
 
-export async function GET() {
-  return new NextResponse(null, { status: 405, headers: { Allow: 'POST' } });
-}
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const form = await request.formData();

@@ -1,27 +1,42 @@
 import Link from 'next/link';
 import { formatUsd } from '@paid/contracts';
 import { CreatorNav } from '../../nav';
-import { ensureDemoLink, withStore } from '../../../src/server/store';
+import { withStore } from '../../../src/server/store';
+import { optionalCreatorSession } from '../../../src/server/session';
+
+export const dynamic = 'force-dynamic';
 
 export default async function CreatorHome() {
-  await ensureDemoLink();
-  const { balances, txs } = await withStore(async (uow) => ({
-    balances: await uow.projectCreatorBalances('creator_maya', uow.clock.now()),
-    txs: await uow.listTransactionsByCreator('creator_maya'),
+  const session = await optionalCreatorSession();
+  if (!session?.creatorId) {
+    return (
+      <main className="page">
+        <h1>Creator home</h1>
+        <p className="empty" data-testid="home-signin">
+          Sign in to see your payouts and transactions.
+        </p>
+        <Link href="/creator/sign-in">Sign in</Link>
+      </main>
+    );
+  }
+  const creatorId = session.creatorId;
+  const { creator, balances, txs } = await withStore(async (uow) => ({
+    creator: await uow.getCreator(creatorId),
+    balances: await uow.projectCreatorBalances(creatorId, uow.clock.now()),
+    txs: await uow.listTransactionsByCreator(creatorId),
   }));
   return (
     <main className="page">
       <div className="topbar">
         <div className="brand">Paid</div>
-        <div className="kicker">Maya</div>
+        <div className="kicker">{creator?.displayName ?? 'Creator'}</div>
       </div>
       <div className="kicker">Available</div>
-      <div className="amount">
+      <div className="amount" data-testid="home-available">
         {formatUsd({ amountMinor: balances.availableMinor, currency: 'USD' })}
       </div>
       <p className="meta">
-        Pending {formatUsd({ amountMinor: balances.pendingMinor, currency: 'USD' })} · Next payout
-        Tue
+        Pending {formatUsd({ amountMinor: balances.pendingMinor, currency: 'USD' })}
       </p>
       <Link
         className="primary"
@@ -30,12 +45,6 @@ export default async function CreatorHome() {
       >
         Create link
       </Link>
-      <div className="section">
-        <div className="row">
-          <strong>HIGH TRUST</strong>
-          <span className="meta">4.75 ★ · 40 completed</span>
-        </div>
-      </div>
       <div className="section">
         <h2>Recent</h2>
         {txs.length === 0 ? <p className="empty">No transactions yet.</p> : null}

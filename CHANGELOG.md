@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased — Magic-link delivery and session-gated home
+
+- Creator/ops magic-link issue stores HMAC digest and puts the one-time continue URL only in the EMAIL_MAGIC_LINK outbox payload.
+- GET continue peeks without consuming; GET consume returns 405; POST consume sets the hashed session cookie.
+- `/creator/home` requires a creator session and no longer projects Maya balances to anonymous GETs.
+
 ## Unreleased — PROVIDER_AGNOSTIC HTTP/worker wiring
 
 - Creator APIs require hashed `paid_session`; local seed session is HMAC-stored, not a raw actor stub.

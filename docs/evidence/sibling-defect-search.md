@@ -8,6 +8,8 @@ Searched 2026-08-29 against the shipped tree.
 | Frontend-only field hiding | DTOs constructed as allowlists; assertNoCreatorLeak | authorization/dtos.ts |
 | Order code as auth | Receipt requires guest cookie; denyOrderCodeAuth | create-checkout.test + security |
 | Bearer token plaintext/URL after exchange | HMAC digest stored; POST issues hashed SESSION cookie | guest-token.ts; continue/route.ts |
+| Magic-link token discarded after hash | continueUrl only in EMAIL_MAGIC_LINK outbox; HTTP ack has no token | tests/magic-link-http.test.ts |
+| Unauthenticated creator home leak | home uses session.creatorId; empty sign-in state | tests/e2e/magic-link.spec.ts |
 | Redirect as payment success | Return page copy + capture only from signed mock webhook, never publicOrderCode | complete-payment/route.ts |
 | GET mutation of guest ACCESS token | peekGuestToken is a pure read | guest-token.ts; guest-checkout e2e |
 | Mutation 303 via Referer | assertAppPath same-app paths only | tests/security.test.ts |

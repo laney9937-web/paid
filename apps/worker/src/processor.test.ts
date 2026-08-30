@@ -80,6 +80,29 @@ describe('outbox worker', () => {
     expect(job.availableAt.getTime()).toBeGreaterThan(uow.clock.now().getTime());
   });
 
+  it('EMAIL_MAGIC_LINK copies continueUrl into email variables', async () => {
+    const uow = new MemoryUnitOfWork();
+    await uow.insertOutbox({
+      id: 'job-magic',
+      type: 'EMAIL_MAGIC_LINK',
+      payload: {
+        toDigest: 'recipient_digest',
+        continueUrl: 'http://127.0.0.1:3000/creator/sign-in/continue?token=one-time-secret',
+      },
+      dedupeKey: 'email-magic:t',
+      availableAt: uow.clock.now(),
+      attemptCount: 0,
+      maxAttempts: 3,
+      state: 'PENDING',
+    });
+    const email = createEmailMock();
+    const log = createLogger('test', 'silent');
+    await processOutbox(createMemoryOutboxRuntime(uow), email.adapter, log);
+    expect(email.sent).toHaveLength(1);
+    expect(email.sent[0]?.variables.continueUrl).toContain('token=one-time-secret');
+    expect(email.sent[0]?.templateId).toBe('EMAIL_MAGIC_LINK');
+  });
+
   it('J-04 dead-letter after max attempts', async () => {
     const uow = new MemoryUnitOfWork();
     await uow.insertOutbox({

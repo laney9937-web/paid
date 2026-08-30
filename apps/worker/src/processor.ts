@@ -40,15 +40,20 @@ async function performJob(
 ): Promise<void> {
   if (job.sideEffectAt) return;
   if (job.type.startsWith('EMAIL_')) {
+    const payload =
+      typeof job.payload === 'object' && job.payload
+        ? (job.payload as Record<string, unknown>)
+        : {};
+    const variables: Record<string, string> = { kind: job.type };
+    if (typeof payload.continueUrl === 'string' && payload.continueUrl.length > 0) {
+      variables.continueUrl = payload.continueUrl;
+    }
     await email.send({
-      toDigest:
-        typeof job.payload === 'object' && job.payload && 'toDigest' in job.payload
-          ? String((job.payload as { toDigest?: string }).toDigest)
-          : 'recipient_digest',
+      toDigest: typeof payload.toDigest === 'string' ? payload.toDigest : 'recipient_digest',
       templateId: job.type,
       templateVersion: 'v1',
       idempotencyKey: job.dedupeKey,
-      variables: { kind: job.type },
+      variables,
     });
   }
   await runtime.markSideEffect(job.id, runtime.now());

@@ -6,6 +6,25 @@ export function magicLinkPublicResponse(): { ok: true; message: string } {
   return { ok: true, message: MAGIC_LINK_PUBLIC_ACK };
 }
 
+export function magicLinkContinuePath(token: string, audience: 'CREATOR' | 'OPS'): string {
+  const path = audience === 'OPS' ? '/ops/sign-in/continue' : '/creator/sign-in/continue';
+  return `${path}?token=${encodeURIComponent(token)}`;
+}
+
+export async function readEmailField(request: Request): Promise<string> {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    const body = (await request.json().catch(() => ({}))) as { email?: string };
+    return String(body.email ?? '')
+      .trim()
+      .toLowerCase();
+  }
+  const form = await request.formData().catch(() => null);
+  return String(form?.get('email') ?? '')
+    .trim()
+    .toLowerCase();
+}
+
 export function passkeyRelyingParty(input: { rpID: string; origin: string }): {
   rpID: string;
   origin: string;

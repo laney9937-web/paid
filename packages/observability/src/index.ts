@@ -5,6 +5,7 @@ const REDACT_PATHS = [
   'req.headers.authorization',
   '*.token',
   '*.guestToken',
+  '*.continueUrl',
   '*.secret',
   '*.pan',
   '*.cvv',

@@ -1,10 +1,10 @@
 import { loadConfig } from '@paid/config';
 import { peekMagicLink } from '@paid/db';
-import { MagicContinueForm } from './continue-form';
+import { OpsMagicContinueForm } from './continue-form';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MagicLinkContinuePage({
+export default async function OpsMagicContinuePage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>;
@@ -14,22 +14,16 @@ export default async function MagicLinkContinuePage({
     ? await peekMagicLink({ token, keyring: loadConfig().tokenKeyring })
     : { valid: false, expired: false, consumed: false };
   return (
-    <main className="page">
-      <h1>Continue sign-in</h1>
+    <main>
+      <h1>Continue staff sign-in</h1>
       <p className="meta" data-testid="scanner-safe-copy">
         Email scanners can open this page without signing you in. Continue only if you requested
-        this link.
+        this link. Order codes are not credentials.
       </p>
       {peek.valid && token ? (
-        <MagicContinueForm token={token} />
+        <OpsMagicContinueForm token={token} />
       ) : (
-        <p className="empty" data-testid="magic-invalid">
-          {peek.consumed
-            ? 'This sign-in link was already used.'
-            : peek.expired
-              ? 'This sign-in link has expired.'
-              : 'This sign-in link is not valid.'}
-        </p>
+        <p data-testid="magic-invalid">This staff sign-in link is not valid or was already used.</p>
       )}
     </main>
   );

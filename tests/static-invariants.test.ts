@@ -67,6 +67,15 @@ describe('static product and security invariants', () => {
     }
   });
 
+  it('AUTH-001 magic-link HTTP delivers continueUrl and does not discard the token', () => {
+    const issue = read('apps/web/app/api/creator/magic-link/route.ts');
+    expect(issue).toContain('continueUrl');
+    expect(issue).not.toContain('void issued.token');
+    const consume = read('apps/web/app/api/creator/magic-link/consume/route.ts');
+    expect(consume).toContain('export async function GET');
+    expect(consume).toContain('405');
+  });
+
   it('H-10 COMP-009 no arbitrary user-URL server fetch', () => {
     const routes = walk(join(root, 'apps/web/app/api'));
     for (const file of routes) {
