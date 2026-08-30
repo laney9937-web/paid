@@ -195,4 +195,21 @@ describe('static product and security invariants', () => {
     const checkout = read('packages/domain/src/commands/create-checkout.ts');
     expect(checkout.toLowerCase()).not.toContain('analytics');
   });
+
+  it('mock complete-payment does not report success unless the payment is CAPTURED', () => {
+    const src = read('apps/web/app/api/mock/complete-payment/route.ts');
+    expect(src).toContain("paymentState !== 'CAPTURED'");
+    expect(src).toContain('PAYMENT_UNKNOWN');
+    expect(src).toContain('takeRateLimit');
+  });
+
+  it('CI verify serializes jobs and isolates Playwright from leftover :3000 servers', () => {
+    const yml = read('.github/workflows/verify.yml');
+    expect(yml).toContain('group: paid-verify');
+    expect(yml).toContain('E2E_WEB_PORT');
+    expect(yml).toContain('E2E_OPS_PORT');
+    const pw = read('playwright.config.ts');
+    expect(pw).toContain("process.env.CI ? '3100'");
+    expect(pw).toContain('workers: process.env.CI ? 1');
+  });
 });

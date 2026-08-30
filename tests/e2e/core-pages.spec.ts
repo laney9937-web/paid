@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { opsOrigin } from './origins';
 
 test('public creator trust page renders product surface', async ({ page }) => {
   const errors: string[] = [];
@@ -18,7 +19,7 @@ test('public creator trust page renders product surface', async ({ page }) => {
 });
 
 test('ops sign-in is an isolated staff boundary', async ({ page }) => {
-  await page.goto('http://127.0.0.1:3001/ops/sign-in');
+  await page.goto(`${opsOrigin()}/ops/sign-in`);
   await expect(page.getByRole('heading', { name: /Paid operations/i })).toBeVisible();
   await expect(page.getByText(/Order codes are not credentials/i)).toBeVisible();
 });
