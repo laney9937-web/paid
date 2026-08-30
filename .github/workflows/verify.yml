@@ -2,9 +2,16 @@ name: verify
 
 on:
   pull_request:
+    branches:
+      - main
   push:
-    branches: [main]
+    branches:
+      - main
+      - repair/**
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
@@ -16,28 +23,27 @@ jobs:
     timeout-minutes: 60
     services:
       postgres:
-        image: postgres:18.6-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: paid
           POSTGRES_PASSWORD: paid_local_only
           POSTGRES_DB: paid
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U paid -d paid"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
+        options: --health-cmd "pg_isready -U paid -d paid" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      CI: true
+      CI: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10.15.1
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: "24"
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
