@@ -1,7 +1,7 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** working tree pending `git rev-parse HEAD` after this evidence pass  
+**Commit:** `91d30c201abfab73c0f5e53c0a9bd7df06729819`  
 **Last updated:** 2026-08-29  
 **Owner/integrating agent:** Grok Build integrating agent
 
@@ -35,7 +35,7 @@
 | E2E/accessibility/visual | Playwright Chromium + axe + 320/390/zoom | PASS | 2026-08-29 |
 | Security/secrets/dependencies | pnpm test:security + static-invariants | PASS | 2026-08-29 |
 | Build | web/ops/worker | PASS Next 16.3.3 | 2026-08-29 |
-| `pnpm verify` | scripts/verify.mjs | VERIFY_OK (re-run after this pass) | 2026-08-29 |
+| `pnpm verify` | scripts/verify.mjs | VERIFY_OK (97 unit, 11 Playwright) | 2026-08-29 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** fill with `git rev-parse HEAD` after the evidence commit  
+**Commit:** `91d30c201abfab73c0f5e53c0a9bd7df06729819`  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init`  
 **Dependency lock digest:** `docs/evidence/sbom.json`  
