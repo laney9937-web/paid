@@ -1,6 +1,6 @@
 # Provider-Agnostic Release Dossier
 
-**Commit:** `45d3d6bd1dfcdb9d7c7c2cfa92d6a53f0d385001` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 126 unit / 15 Playwright / 16 simulator)  
+**Commit:** `7e534ecdda0f9a98b30196d376ee9c82d2d9a2c7` (dual clean-checkout `pnpm verify` both `VERIFY_OK`: 128 unit / 15 Playwright / 16 simulator; GitHub Actions success https://github.com/laney9937-web/paid/actions/runs/33296730347)  
 **Build artifact/digest:** Next.js 16.3.3 production webpack builds of web/ops; worker tsc dist  
 **Schema/migration version:** `0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`  
 **Dependency lock digest:** `docs/evidence/sbom.json` (lock `5a6b4fe7945a51dcee04de566265f33dc393161e7f6853fcecb9c2c1917c8ef9`)  
@@ -36,12 +36,12 @@ pnpm verify
 
 Environment: Node 24 LTS, pnpm 10.15.1, Docker Compose PostgreSQL 18.6. `DATABASE_URL` and `TOKEN_HMAC_KEY_V1` from `.env.example`.
 
-Clean-checkout evidence (detached worktree of `45d3d6b`):
+Clean-checkout evidence (detached worktree of `7e534ec`):
 
 - `pnpm install --frozen-lockfile`
 - `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`)
-- `pnpm verify` twice → both `VERIFY_OK` (126 unit including `tests/adversarial-integrity.test.ts` and `tests/magic-link-http.test.ts`, 15 Playwright, 16 simulator)
-- GitHub Actions: `.github/workflows/verify.yml` is registered and triggered. Every remote run, including a one-step `echo ok` smoke on `main`, concludes `startup_failure` with path `BuildFailed` and zero jobs (example: https://github.com/laney9937-web/paid/actions/runs/33294938192). Local dual verify is not a substitute for a green Actions conclusion.
+- `pnpm verify` twice → both `VERIFY_OK` (128 unit including `tests/adversarial-integrity.test.ts` and `tests/magic-link-http.test.ts`, 15 Playwright, 16 simulator)
+- GitHub Actions: self-hosted Linux runner (GitHub-hosted minutes remain billing-locked). Run https://github.com/laney9937-web/paid/actions/runs/33296730347 on SHA `7e534ec` concluded **success** (Node 24.19.0, frozen pnpm, host PostgreSQL 18, migrate/seed, secret-scan, `pnpm verify`, SBOM). Prior failure https://github.com/laney9937-web/paid/actions/runs/33295432175 was guest-checkout staying on Payment pending; CI now uses isolated ports 3100/3101 and fail-closed mock capture.
 
 ## 4. Test/build results
 

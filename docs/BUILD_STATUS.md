@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** `45d3d6bd1dfcdb9d7c7c2cfa92d6a53f0d385001` (`repair/auth-financial-trust-integrity`)  
-**Last updated:** 2026-08-29  
+**Commit:** `7e534ecdda0f9a98b30196d376ee9c82d2d9a2c7` (`repair/auth-financial-trust-integrity`)  
+**Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `45d3d6b` both `VERIFY_OK` (126 unit, 15 Playwright, 16 simulator). GitHub Actions must still be green on the PR. This repair keeps the provider-agnostic mock boundary: no Segpay/CCBill/Verotel, no live money.
+`PROVIDER_AGNOSTIC_REPAIR` — dual clean-checkout `pnpm verify` of `7e534ec` both `VERIFY_OK` (128 unit, 15 Playwright, 16 simulator). GitHub Actions `verify` on that SHA concluded **success**: https://github.com/laney9937-web/paid/actions/runs/33296730347 (PR https://github.com/laney9937-web/paid/pull/2). Provider-agnostic mock boundary unchanged: no Segpay/CCBill/Verotel, no live money.
 
 ## What this repair changed
 
@@ -28,12 +28,12 @@
 |---|---|---|---|---|---|
 | 0 | Preflight/governance | VERIFIED | docs/*, ADR-001, traceability | none | none |
 | 1 | Reproducible foundation | VERIFIED | pnpm workspace, compose PG 18.6, drizzle SQL, pnpm verify | none | none |
-| 2 | Auth/onboarding | VERIFIED | hashed tokens, envelope magic-link, session facts | none | CI green |
+| 2 | Auth/onboarding | VERIFIED | hashed tokens, envelope magic-link, session facts | none | none |
 | 3 | Creator/public product | VERIFIED | create-link e2e, truthful trust | none | none |
 | 4 | Guest privacy/mock checkout | VERIFIED | guest GET/POST, stable idempotency | none | none |
 | 5 | Fulfillment/disputes/reviews | VERIFIED | domain commands + acceptance-matrix D/E | none | none |
 | 6 | Financial integrity/risk | VERIFIED | request≠paid, event outcomes, 0004 | none | none |
-| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles, GHA workflow | remote CI | push PR |
+| 7 | Ops/reliability/verification | VERIFIED | role-gated consoles, GHA success on 7e534ec | none | keep PR open |
 | 8 | Provider sandbox | BLOCKED_EXTERNAL | | Provider ADR/credentials | wait LIVE-009 |
 | 9 | Live money | BLOCKED_EXTERNAL | | LIVE gates | wait |
 
@@ -41,12 +41,12 @@
 
 | Check | Command/evidence | Result | Last run |
 |---|---|---|---|
-| Unit | `pnpm test` | PASS (126) | 2026-08-29 |
-| Property/contract/integration/migrations/security | pnpm scripts | PASS | 2026-08-29 |
-| Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-29 |
-| Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-29 |
-| Dual clean-checkout `pnpm verify` | detached worktree of `45d3d6b` | VERIFY_OK twice | 2026-08-29 |
-| GitHub Actions | `.github/workflows/verify.yml` | `startup_failure` (no jobs scheduled) | 2026-08-30 |
+| Unit | `pnpm test` | PASS (128) | 2026-08-30 |
+| Property/contract/integration/migrations/security | pnpm scripts | PASS | 2026-08-30 |
+| Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-30 |
+| Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-30 |
+| Dual clean-checkout `pnpm verify` | detached worktree of `7e534ec` | VERIFY_OK twice (128 unit, 15 Playwright, 16 simulator) | 2026-08-30 |
+| GitHub Actions | `.github/workflows/verify.yml` run 33296730347 | success on `7e534ec` | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 
