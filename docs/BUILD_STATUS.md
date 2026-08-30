@@ -46,7 +46,7 @@
 | Simulator | `pnpm mock:scenario -- --name all` | PASS (16) | 2026-08-29 |
 | Secret scan | `node scripts/secret-scan.mjs` | PASS | 2026-08-29 |
 | Dual clean-checkout `pnpm verify` | detached worktree of `45d3d6b` | VERIFY_OK twice | 2026-08-29 |
-| GitHub Actions | `.github/workflows/verify.yml` | pending remote on PR | |
+| GitHub Actions | `.github/workflows/verify.yml` | `startup_failure` (no jobs scheduled) | 2026-08-30 |
 
 ## Honest NOT_APPLICABLE (non-live)
 

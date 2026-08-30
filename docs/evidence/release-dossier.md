@@ -41,6 +41,7 @@ Clean-checkout evidence (detached worktree of `45d3d6b`):
 - `pnpm install --frozen-lockfile`
 - `pnpm db:reset && pnpm db:migrate && pnpm db:seed` (`0001_init` + `0002_auth_outbox` + `0003_staff` + `0004_auth_financial_integrity`)
 - `pnpm verify` twice → both `VERIFY_OK` (126 unit including `tests/adversarial-integrity.test.ts` and `tests/magic-link-http.test.ts`, 15 Playwright, 16 simulator)
+- GitHub Actions: `.github/workflows/verify.yml` is registered and triggered. Every remote run, including a one-step `echo ok` smoke on `main`, concludes `startup_failure` with path `BuildFailed` and zero jobs (example: https://github.com/laney9937-web/paid/actions/runs/33294938192). Local dual verify is not a substitute for a green Actions conclusion.
 
 ## 4. Test/build results
 
