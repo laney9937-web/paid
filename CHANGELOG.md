@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased — Staff schema and default-deny layouts
+
+- `users.staff_role` (migration `0003_staff`); magic-link purposes `MAGIC_LINK` vs `MAGIC_LINK_OPS`.
+- Ops/creator private pages live under `(staff)` / `(authed)` layouts; Maya cannot obtain `paid_ops_session`.
+
 ## Unreleased — Magic-link delivery and session-gated home
 
 - Creator/ops magic-link issue stores HMAC digest and puts the one-time continue URL only in the EMAIL_MAGIC_LINK outbox payload.

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { newId } from '@paid/domain';
 import { withStore } from '../../../../src/server/store';
-import { requireCreatorSession } from '../../../../src/server/session';
+import { requireCreatorSession } from '@paid/auth/http';
 import { isAppError } from '@paid/contracts';
 
 export async function POST(request: Request) {

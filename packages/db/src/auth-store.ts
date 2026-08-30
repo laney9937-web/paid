@@ -19,6 +19,12 @@ export function emailDigest(email: string): string {
 
 export type SessionKind = 'CREATOR' | 'OPS';
 
+export type MagicPurpose = 'MAGIC_LINK' | 'MAGIC_LINK_OPS';
+
+export function magicLinkPurpose(kind: SessionKind): MagicPurpose {
+  return kind === 'OPS' ? 'MAGIC_LINK_OPS' : 'MAGIC_LINK';
+}
+
 export type SessionRow = {
   id: string;
   userId: string;
@@ -31,22 +37,31 @@ export async function issueMagicLink(input: {
   email: string;
   keyring: TokenKeyring;
   ttlMs: number;
+  kind: SessionKind;
   now?: Date;
 }): Promise<{ stored: boolean; token?: string }> {
   const sql = getSql();
   const now = input.now ?? new Date();
   const email = input.email.trim().toLowerCase();
   const digest = emailDigest(email);
-  const users = await sql`SELECT id FROM users WHERE lower(email) = ${email}`;
+  const users = await sql`SELECT id, staff_role FROM users WHERE lower(email) = ${email}`;
   if (users.length === 0) return { stored: false };
-  const userId = String((users[0] as { id: string }).id);
+  const user = users[0] as { id: string; staff_role: string | null };
+  const userId = String(user.id);
+  if (input.kind === 'OPS') {
+    if (!user.staff_role) return { stored: false };
+  } else {
+    const creators = await sql`SELECT id FROM creator_profiles WHERE user_id = ${userId}`;
+    if (creators.length === 0) return { stored: false };
+  }
+  const purpose = magicLinkPurpose(input.kind);
   const token = generateSecretToken();
   const hashed = hmacToken(input.keyring, token);
   await sql`
     INSERT INTO auth_tokens (
       id, user_id, email_digest, digest_hex, key_version, purpose, expires_at, consumed_at, created_at
     ) VALUES (
-      ${newId()}, ${userId}, ${digest}, ${hashed.digestHex}, ${hashed.keyVersion}, 'MAGIC_LINK',
+      ${newId()}, ${userId}, ${digest}, ${hashed.digestHex}, ${hashed.keyVersion}, ${purpose},
       ${new Date(now.getTime() + input.ttlMs)}, null, ${now}
     )
   `;
@@ -56,16 +71,18 @@ export async function issueMagicLink(input: {
 export async function peekMagicLink(input: {
   token: string;
   keyring: TokenKeyring;
+  kind: SessionKind;
   now?: Date;
 }): Promise<{ valid: boolean; expired: boolean; consumed: boolean }> {
   const token = input.token.trim();
   if (!token) return { valid: false, expired: false, consumed: false };
   const sql = getSql();
   const now = input.now ?? new Date();
+  const purpose = magicLinkPurpose(input.kind);
   const digests = lookupTokenDigest(input.keyring, token).map((d) => d.digestHex);
   const rows = await sql`
     SELECT consumed_at, expires_at FROM auth_tokens
-    WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+    WHERE digest_hex = ANY(${digests}) AND purpose = ${purpose}
   `;
   const row = rows[0] as { consumed_at: Date | null; expires_at: Date } | undefined;
   if (!row) return { valid: false, expired: false, consumed: false };
@@ -85,12 +102,13 @@ export async function consumeMagicLink(input: {
 }): Promise<{ sessionToken: string; userId: string; creatorId: string | null }> {
   const sql = getSql();
   const now = input.now ?? new Date();
+  const purpose = magicLinkPurpose(input.kind);
   const digests = lookupTokenDigest(input.keyring, input.token.trim()).map((d) => d.digestHex);
   const updated = await sql`
     UPDATE auth_tokens
     SET consumed_at = ${now}
     WHERE digest_hex = ANY(${digests})
-      AND purpose = 'MAGIC_LINK'
+      AND purpose = ${purpose}
       AND consumed_at IS NULL
       AND expires_at > ${now}
     RETURNING *
@@ -98,11 +116,15 @@ export async function consumeMagicLink(input: {
   const row = updated[0] as Record<string, unknown> | undefined;
   if (!row) {
     const existing = await sql`
-      SELECT consumed_at, expires_at FROM auth_tokens
-      WHERE digest_hex = ANY(${digests}) AND purpose = 'MAGIC_LINK'
+      SELECT consumed_at, expires_at, purpose FROM auth_tokens
+      WHERE digest_hex = ANY(${digests})
     `;
-    const found = existing[0] as { consumed_at: Date | null; expires_at: Date } | undefined;
-    if (!found) throw new AppError('UNAUTHENTICATED', 'This sign-in link is not valid');
+    const found = existing[0] as
+      | { consumed_at: Date | null; expires_at: Date; purpose: string }
+      | undefined;
+    if (!found || found.purpose !== purpose) {
+      throw new AppError('UNAUTHENTICATED', 'This sign-in link is not valid');
+    }
     if (found.consumed_at) {
       throw new AppError('UNAUTHENTICATED', 'This sign-in link was already used');
     }
@@ -110,7 +132,12 @@ export async function consumeMagicLink(input: {
   }
   const userId = String(row.user_id);
   let creatorId: string | null = null;
-  if (input.kind === 'CREATOR') {
+  if (input.kind === 'OPS') {
+    const staff = await sql`SELECT staff_role FROM users WHERE id = ${userId}`;
+    if (!(staff[0] as { staff_role: string | null } | undefined)?.staff_role) {
+      throw new AppError('FORBIDDEN', 'Staff role required');
+    }
+  } else {
     const creators = await sql`SELECT id FROM creator_profiles WHERE user_id = ${userId}`;
     creatorId = (creators[0] as { id: string } | undefined)?.id ?? null;
     if (!creatorId) throw new AppError('FORBIDDEN', 'No creator profile for this account');
@@ -136,8 +163,9 @@ export async function lookupSession(
   const sql = getSql();
   const digests = lookupTokenDigest(keyring, rawToken).map((d) => d.digestHex);
   const rows = await sql`
-    SELECT s.id, s.user_id, s.kind, s.expires_at, c.id AS creator_id
+    SELECT s.id, s.user_id, s.kind, s.expires_at, c.id AS creator_id, u.staff_role
     FROM sessions s
+    JOIN users u ON u.id = s.user_id
     LEFT JOIN creator_profiles c ON c.user_id = s.user_id
     WHERE s.token_hash = ANY(${digests}) AND s.kind = ${kind}
   `;
@@ -145,6 +173,8 @@ export async function lookupSession(
   if (!row) return null;
   const expiresAt = new Date(String(row.expires_at));
   if (expiresAt <= new Date()) return null;
+  if (kind === 'OPS' && !row.staff_role) return null;
+  if (kind === 'CREATOR' && row.creator_id == null) return null;
   return {
     id: String(row.id),
     userId: String(row.user_id),

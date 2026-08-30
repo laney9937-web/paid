@@ -1,13 +1,13 @@
 # Build Status
 
 **Build mode:** `PROVIDER_AGNOSTIC`  
-**Commit:** ae1a66bb9632d5b23874f7f766b89c963b2cb79e  
+**Commit:** pending dual clean-checkout of staff default-deny kernel  
 **Last updated:** 2026-08-30  
 **Owner/integrating agent:** Grok Build integrating agent
 
 ## Overall status
 
-`PROVIDER_AGNOSTIC_VERIFIED` candidate — magic-link issue now delivers `continueUrl` via outbox; GET continue peeks; creator home is session-gated. `pnpm verify` on this tree: `VERIFY_OK` (105 unit, 14 Playwright). All `LIVE-*` remain `BLOCKED_EXTERNAL`.
+`NOT_COMPLETE` until dual clean-checkout `pnpm verify` of this staff-authz kernel. Staff is `users.staff_role`; ops/creator private pages sit behind `(staff)`/`(authed)` layouts. Maya cannot mint `paid_ops_session`. All `LIVE-*` remain `BLOCKED_EXTERNAL`.
 
 ## Milestones
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CreatorNav } from '../../nav';
+import { CreatorNav } from '../../../nav';
 
 export default function AccountPage() {
   return (

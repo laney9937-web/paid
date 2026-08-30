@@ -8,7 +8,7 @@ import {
 } from '@paid/contracts';
 import { createTransactionLink } from '@paid/domain';
 import { withStore } from '../../../../src/server/store';
-import { requireCreatorSession } from '../../../../src/server/session';
+import { requireCreatorSession } from '@paid/auth/http';
 
 export const dynamic = 'force-dynamic';
 

@@ -16,10 +16,22 @@ async function latestContinueUrl(template: string): Promise<string> {
   throw new Error(`missing ${template} continueUrl`);
 }
 
-test('unauthenticated creator home does not leak payout balances', async ({ page }) => {
+test('unauthenticated creator home and account redirect to sign-in', async ({ page }) => {
   await page.goto('/creator/home');
-  await expect(page.getByTestId('home-signin')).toBeVisible();
+  await expect(page).toHaveURL(/\/creator\/sign-in/);
   await expect(page.getByTestId('home-available')).toHaveCount(0);
+  await page.goto('/creator/account');
+  await expect(page).toHaveURL(/\/creator\/sign-in/);
+  await expect(page.getByText(/^Public name: Maya$/)).toHaveCount(0);
+});
+
+test('unauthenticated ops pages redirect to staff sign-in', async ({ page }) => {
+  for (const path of ['/ops/cases', '/ops/audit', '/ops/risk']) {
+    await page.goto(`http://127.0.0.1:3001${path}`);
+    await expect(page).toHaveURL(/\/ops\/sign-in/);
+    await expect(page.getByTestId('ops-hold')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /Paid operations/i })).toBeVisible();
+  }
 });
 
 test('creator magic-link POST issue, GET continue does not consume, POST sets session', async ({

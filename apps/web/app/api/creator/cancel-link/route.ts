@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { errorEnvelope, isAppError } from '@paid/contracts';
 import { cancelTransactionLink } from '@paid/domain';
 import { withStore } from '../../../../src/server/store';
-import { requireCreatorSession } from '../../../../src/server/session';
+import { requireCreatorSession } from '@paid/auth/http';
 import { redirectToAppPath } from '../../../../src/server/app-redirect';
 
 export async function POST(request: Request) {

@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       email,
       keyring: loadConfig().tokenKeyring,
       ttlMs: MAGIC_LINK_TTL_MS,
+      kind: 'OPS',
     });
     if (issued.stored && issued.token) {
       const origin = process.env.OPS_ORIGIN ?? new URL(request.url).origin;

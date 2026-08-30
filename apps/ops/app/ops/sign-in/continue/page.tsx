@@ -11,7 +11,7 @@ export default async function OpsMagicContinuePage({
 }) {
   const { token } = await searchParams;
   const peek = token
-    ? await peekMagicLink({ token, keyring: loadConfig().tokenKeyring })
+    ? await peekMagicLink({ token, keyring: loadConfig().tokenKeyring, kind: 'OPS' })
     : { valid: false, expired: false, consumed: false };
   return (
     <main>

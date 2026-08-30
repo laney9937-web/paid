@@ -38,10 +38,11 @@ try {
     ON CONFLICT (id) DO NOTHING
   `;
   await sql`
-    INSERT INTO users (id, email, email_digest, created_at, updated_at)
-    VALUES ('user_ops', 'ops@paid.example', 'digest_ops', ${now}, ${now})
-    ON CONFLICT (id) DO NOTHING
+    INSERT INTO users (id, email, email_digest, created_at, updated_at, staff_role)
+    VALUES ('user_ops', 'ops@paid.example', 'digest_ops', ${now}, ${now}, 'SUPPORT')
+    ON CONFLICT (id) DO UPDATE SET staff_role = EXCLUDED.staff_role
   `;
+  await sql`UPDATE users SET staff_role = NULL WHERE id = 'user_maya'`;
   const keyring = loadConfig().tokenKeyring;
   const creatorSession = hmacToken(keyring, LOCAL_DEV_CREATOR_SESSION);
   const opsSession = hmacToken(keyring, LOCAL_DEV_OPS_SESSION);

@@ -243,9 +243,15 @@ importers:
       '@paid/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@paid/db':
+        specifier: workspace:*
+        version: link:../db
       better-auth:
         specifier: 1.7.2
         version: 1.7.2(@opentelemetry/api@1.9.0)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.0)(kysely@0.29.5)(postgres@3.4.9))(next@16.3.3(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@24.10.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@4.1.11(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(vite@8.2.2(@types/node@24.10.1)(esbuild@0.28.2)(tsx@4.23.12)))
+      next:
+        specifier: 16.3.3
+        version: 16.3.3(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(@types/node@24.10.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
   packages/authorization:
     dependencies:

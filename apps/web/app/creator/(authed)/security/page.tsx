@@ -1,6 +1,6 @@
-import { CreatorNav } from '../../nav';
+import { CreatorNav } from '../../../nav';
 import { listUserSessions } from '@paid/db';
-import { optionalCreatorSession } from '../../../src/server/session';
+import { optionalCreatorSession } from '@paid/auth/http';
 
 export default async function SecurityPage({
   searchParams,

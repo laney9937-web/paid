@@ -36,7 +36,7 @@ Use one row per atomic requirement. Never mark `VERIFIED` without evidence.
 | AUTH-004 | 10_ D | List/revoke device sessions and passkeys | rotateSession, revokeSessions, creator/security page | I-08 | vitest | local | VERIFIED | integrating agent | |
 | AUTH-005 | 10_ D | Step-up for high-risk actions | changePayoutDestination, createRefund, requestPayout | F-01 D-05 | vitest | local | VERIFIED | integrating agent | |
 | AUTH-006 | 10_ D | Email/recovery change revokes and alerts | applyAccountRecovery | F-03 I-06 | vitest | local | VERIFIED | integrating agent | |
-| AUTH-007 | 10_ D | Staff auth stronger / isolated | OPS_SESSION_COOKIE; `/api/ops/magic-link`; `/ops/sign-in/continue` | I-07 tests/e2e/magic-link.spec.ts ops | playwright | local | VERIFIED | integrating agent | isolated origin :3001; hashed staff magic-link consume |
+| AUTH-007 | 10_ D | Staff auth stronger / isolated | `users.staff_role`; MAGIC_LINK_OPS; ops `(staff)` layout | tests/magic-link-http.test.ts Maya cannot OPS; tests/e2e/magic-link.spec.ts | vitest+playwright | local | VERIFIED | integrating agent | isolated origin :3001; default-deny GET /ops/* |
 | AUTH-008 | 10_ D | Support cannot recover from order code | denyOrderCodeAuth, ops sign-in copy | G-04; tests/e2e/core-pages.spec.ts | playwright | local | VERIFIED | integrating agent | |
 | PRIV-001 | 10_ E | Public order code not auth | receipt page, denyOrderCodeAuth | G-04 | vitest+playwright | local | VERIFIED | integrating agent | |
 | PRIV-002 | 10_ E | Guest secret hashed; cookie exchange | guest-token.ts, continue/route.ts | A guest peek/exchange; tests/e2e/guest-checkout.spec.ts | playwright | local | VERIFIED | integrating agent | HMAC-SHA-256 |

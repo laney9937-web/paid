@@ -11,7 +11,7 @@ export default async function MagicLinkContinuePage({
 }) {
   const { token } = await searchParams;
   const peek = token
-    ? await peekMagicLink({ token, keyring: loadConfig().tokenKeyring })
+    ? await peekMagicLink({ token, keyring: loadConfig().tokenKeyring, kind: 'CREATOR' })
     : { valid: false, expired: false, consumed: false };
   return (
     <main className="page">

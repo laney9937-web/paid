@@ -1,4 +1,4 @@
-import { CreatorNav } from '../../nav';
+import { CreatorNav } from '../../../nav';
 import { CreateForm } from './create-form';
 
 export default async function CreatePage() {

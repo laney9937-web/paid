@@ -1,6 +1,6 @@
-import { CreatorNav } from '../../nav';
-import { withStore } from '../../../src/server/store';
-import { optionalCreatorSession } from '../../../src/server/session';
+import { CreatorNav } from '../../../nav';
+import { withStore } from '../../../../src/server/store';
+import { optionalCreatorSession } from '@paid/auth/http';
 
 export default async function PayoutsPage() {
   const session = await optionalCreatorSession();

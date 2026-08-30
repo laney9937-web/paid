@@ -1,4 +1,4 @@
-import { CreatorNav } from '../../nav';
+import { CreatorNav } from '../../../nav';
 
 export default function TrustPage() {
   return (

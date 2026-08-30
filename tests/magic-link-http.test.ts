@@ -73,14 +73,18 @@ describe('magic-link HTTP issue and consume', () => {
     expect(payload.continueUrl).toBe(continueUrl);
 
     const keyring = loadConfig().tokenKeyring;
-    expect(await peekMagicLink({ token, keyring })).toMatchObject({
+    expect(await peekMagicLink({ token, keyring, kind: 'CREATOR' })).toMatchObject({
       valid: true,
       consumed: false,
       expired: false,
     });
+    expect(await peekMagicLink({ token, keyring, kind: 'OPS' })).toMatchObject({ valid: false });
     const getRes = await getCreatorConsume();
     expect(getRes.status).toBe(405);
-    expect(await peekMagicLink({ token, keyring })).toMatchObject({ valid: true, consumed: false });
+    expect(await peekMagicLink({ token, keyring, kind: 'CREATOR' })).toMatchObject({
+      valid: true,
+      consumed: false,
+    });
 
     const first = await consumeMagicLink({
       token,
@@ -91,7 +95,10 @@ describe('magic-link HTTP issue and consume', () => {
     expect(first.creatorId).toBe('creator_maya');
     expect(first.sessionToken.length).toBeGreaterThan(20);
     expect(first.sessionToken).not.toBe(token);
-    expect(await peekMagicLink({ token, keyring })).toMatchObject({ valid: false, consumed: true });
+    expect(await peekMagicLink({ token, keyring, kind: 'CREATOR' })).toMatchObject({
+      valid: false,
+      consumed: true,
+    });
     await expect(
       consumeMagicLink({ token, keyring, kind: 'CREATOR', ttlMs: CREATOR_SESSION_IDLE_MS }),
     ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
@@ -114,7 +121,10 @@ describe('magic-link HTTP issue and consume', () => {
     expect(JSON.stringify(body)).not.toContain(token);
     expect(await getOpsConsume()).toMatchObject({ status: 405 });
     const keyring = loadConfig().tokenKeyring;
-    expect(await peekMagicLink({ token, keyring })).toMatchObject({ valid: true, consumed: false });
+    expect(await peekMagicLink({ token, keyring, kind: 'OPS' })).toMatchObject({
+      valid: true,
+      consumed: false,
+    });
     const session = await consumeMagicLink({
       token,
       keyring,
@@ -125,5 +135,45 @@ describe('magic-link HTTP issue and consume', () => {
     expect(session.userId).toBe('user_ops');
     expect(OPS_SESSION_COOKIE).toBe('paid_ops_session');
     expect(OPS_SESSION_COOKIE).not.toBe(WEB_SESSION_COOKIE);
+  });
+
+  it('Maya cannot obtain an OPS magic-link or paid_ops_session', async () => {
+    const sql = getSql();
+    const before = await sql`
+      SELECT count(*)::int AS n FROM auth_tokens WHERE purpose = 'MAGIC_LINK_OPS'
+    `;
+    const beforeN = Number((before[0] as { n: number }).n);
+    const issued = await issueOps(
+      new Request('http://127.0.0.1:3001/api/ops/magic-link', {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'maya@paid.example' }),
+      }),
+    );
+    const body = await issued.json();
+    expect(body.message).toBe(MAGIC_LINK_PUBLIC_ACK);
+    const after = await sql`
+      SELECT count(*)::int AS n FROM auth_tokens WHERE purpose = 'MAGIC_LINK_OPS'
+    `;
+    expect(Number((after[0] as { n: number }).n)).toBe(beforeN);
+
+    const creatorIssued = await issueCreator(
+      new Request('http://127.0.0.1:3000/api/creator/magic-link', {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'maya@paid.example' }),
+      }),
+    );
+    expect((await creatorIssued.json()).message).toBe(MAGIC_LINK_PUBLIC_ACK);
+    const continueUrl = await latestContinueUrl('magic-link');
+    const token = tokenFrom(continueUrl);
+    const keyring = loadConfig().tokenKeyring;
+    await expect(
+      consumeMagicLink({ token, keyring, kind: 'OPS', ttlMs: OPS_SESSION_IDLE_MS }),
+    ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    expect(await peekMagicLink({ token, keyring, kind: 'CREATOR' })).toMatchObject({
+      valid: true,
+      consumed: false,
+    });
   });
 });

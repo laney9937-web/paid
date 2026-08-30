@@ -1,15 +1,18 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { OPS_SESSION_COOKIE } from '@paid/auth';
-import { loadConfig } from '@paid/config';
-import { lookupSession, withPostgresUow } from '@paid/db';
+import { requireOpsSession } from '@paid/auth/http';
+import { withPostgresUow } from '@paid/db';
 import { newId } from '@paid/domain';
+import { isAppError } from '@paid/contracts';
 
 export async function POST(request: Request) {
-  const raw = (await cookies()).get(OPS_SESSION_COOKIE)?.value;
-  const session = await lookupSession(raw, loadConfig().tokenKeyring, 'OPS');
-  if (!session) {
-    return NextResponse.redirect(new URL('/ops/sign-in', request.url), 303);
+  let session;
+  try {
+    session = await requireOpsSession();
+  } catch (error) {
+    if (isAppError(error)) {
+      return NextResponse.redirect(new URL('/ops/sign-in', request.url), 303);
+    }
+    throw error;
   }
   const form = await request.formData();
   const creatorId = String(form.get('creatorId') ?? '');

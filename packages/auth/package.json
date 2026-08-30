@@ -5,12 +5,15 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./http": "./src/http-session.ts"
   },
   "dependencies": {
     "@paid/contracts": "workspace:*",
     "@paid/config": "workspace:*",
+    "@paid/db": "workspace:*",
     "better-auth": "1.7.2",
-    "@better-auth/passkey": "1.7.2"
+    "@better-auth/passkey": "1.7.2",
+    "next": "16.3.3"
   }
 }

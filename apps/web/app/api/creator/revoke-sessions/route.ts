@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireCreatorSession } from '../../../../src/server/session';
+import { requireCreatorSession } from '@paid/auth/http';
 import { revokeUserSessions } from '@paid/db';
 import { isAppError } from '@paid/contracts';
 
